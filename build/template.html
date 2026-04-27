@@ -59,7 +59,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   min-height: 0;
   overflow: hidden;
   background: var(--bg);
-  padding-top: env(safe-area-inset-top);
 }
 
 /* ── Header ── */
@@ -67,7 +66,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 12px 20px 8px;
 }
 @supports (padding: max(0px)) {
-  .header { padding-top: max(12px, calc(env(safe-area-inset-top) + 6px)); }
+  .header { padding-top: max(12px, calc(env(safe-area-inset-top) + 4px)); }
 }
 .title-block { margin-bottom: 16px; }
 .kicker {
@@ -486,7 +485,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   align-items: center;
   gap: 8px;
   padding: 6px 16px;
-  padding-bottom: max(8px, calc(env(safe-area-inset-bottom) + 4px));
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--divider);
   z-index: 100;
   background: rgba(247, 240, 227, 0.88);
