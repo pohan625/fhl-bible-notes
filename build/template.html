@@ -603,6 +603,51 @@ button { font: inherit; color: inherit; cursor: pointer; }
   text-align: center;
 }
 
+/* ── Bottom tab bar ── */
+.tab-bar {
+  flex-shrink: 0;
+  display: flex;
+  border-top: 1px solid var(--divider);
+  background: rgba(247, 240, 227, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 100;
+}
+@supports (padding: max(0px)) {
+  .tab-bar { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
+}
+.tab-bar-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 8px 0 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  transition: color 0.14s;
+}
+.tab-bar-btn.active {
+  color: var(--accent);
+  font-weight: 700;
+}
+.tab-bar-btn .icon { display: inline-flex; }
+
+/* ── Dedicated full-text search screen ── */
+.search-screen-empty {
+  margin: 48px 16px;
+  text-align: center;
+  color: var(--sub);
+  font-size: 14px;
+  line-height: 1.8;
+  font-family: 'Noto Serif TC', serif;
+}
+
 /* SVG icons inherit currentColor */
 svg { display: block; }
 
@@ -719,6 +764,7 @@ function readRoute() {
   const h = location.hash.replace(/^#/, '');
   if (!h) return { screen: 'home' };
   const parts = h.split('/').map(decodeURIComponent);
+  if (parts[0] === 'search') return { screen: 'search' };
   if (parts[0] === 'book' && parts[1]) return { screen: 'book', book: parts[1] };
   if (parts[0] === 'intro' && parts[1]) return { screen: 'intro', book: parts[1], view: parts[2] || 'background' };
   if (parts[0] === 'read' && parts[1] && parts[2]) return { screen: 'read', book: parts[1], chapter: parseInt(parts[2], 10) };
@@ -726,7 +772,8 @@ function readRoute() {
 }
 function go(route) {
   let h = '';
-  if (route.screen === 'book') h = 'book/' + encodeURIComponent(route.book);
+  if (route.screen === 'search') h = 'search';
+  else if (route.screen === 'book') h = 'book/' + encodeURIComponent(route.book);
   else if (route.screen === 'intro') h = 'intro/' + encodeURIComponent(route.book) + '/' + (route.view || 'background');
   else if (route.screen === 'read') h = 'read/' + encodeURIComponent(route.book) + '/' + route.chapter;
   if (location.hash.replace(/^#/, '') !== h) location.hash = h;
@@ -737,6 +784,8 @@ const state = {
   homeTab: localStorage.getItem('home-tab') || 'nt',
   homeSearch: '',
   homeScroll: 0,
+  fullSearchQuery: '',
+  fullSearchScroll: 0,
   fontSize: parseInt(localStorage.getItem('reading-font') || '17', 10),
   showFontControls: false,
 };
@@ -911,6 +960,8 @@ const ICONS = {
   person: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   notes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   textSize: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><text x="2" y="18" font-size="10" fill="currentColor" font-family="sans-serif">A</text><text x="11" y="20" font-size="14" fill="currentColor" font-family="sans-serif" font-weight="700">A</text></svg>',
+  book: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 5a2 2 0 0 1 2-2h11v16H6a2 2 0 0 0-2 2V5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17 3v16M4 19a2 2 0 0 0 2 2h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  searchTab: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.7"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
 };
 
 function icon(name, klass) {
@@ -919,6 +970,29 @@ function icon(name, klass) {
   span.style.display = 'inline-flex';
   span.innerHTML = ICONS[name] || '';
   return span;
+}
+
+/* === Bottom tab bar (註釋 / 搜尋) ===
+ * Shown only on the two top-level screens (home / search). Detail screens
+ * — book / intro / read — keep their own back button instead, to maximise
+ * vertical reading space on phones.
+ */
+function renderTabBar(active) {
+  const bar = el('div', { class: 'tab-bar' });
+  const tabs = [
+    { key: 'home', label: '註釋', icon: 'book', target: { screen: 'home' } },
+    { key: 'search', label: '搜尋', icon: 'searchTab', target: { screen: 'search' } },
+  ];
+  for (const t of tabs) {
+    const btn = el('button', {
+      class: 'tab-bar-btn' + (t.key === active ? ' active' : ''),
+      onclick: () => { if (t.key !== active) go(t.target); },
+    });
+    btn.appendChild(icon(t.icon));
+    btn.appendChild(el('div', null, t.label));
+    bar.appendChild(btn);
+  }
+  return bar;
 }
 
 /* === Screens === */
@@ -931,16 +1005,12 @@ function renderHome() {
     el('div', { class: 'h1' }, '信望愛聖經註釋')
   ));
 
-  // Search
+  // Search (book names only — full-text search lives in the dedicated 搜尋 tab)
   const searchInput = el('input', {
     type: 'search',
-    placeholder: '搜尋書卷或全文（如「以馬內利」）...',
+    placeholder: '搜尋書卷（跨舊約新約）...',
     value: state.homeSearch,
-    oninput: (e) => {
-      state.homeSearch = e.target.value;
-      clearBtn.style.display = state.homeSearch ? 'inline-flex' : 'none';
-      scheduleRender();
-    },
+    oninput: (e) => { state.homeSearch = e.target.value; renderCategories(); },
   });
   const clearBtn = el('button', {
     class: 'icon-btn',
@@ -950,13 +1020,6 @@ function renderHome() {
   clearBtn.appendChild(icon('close'));
   const searchBox = el('div', { class: 'search' }, icon('search'), searchInput, clearBtn);
   header.appendChild(searchBox);
-
-  // Debounce full-text search so typing stays responsive on the ~10 MB corpus.
-  let renderTimer = null;
-  function scheduleRender() {
-    if (renderTimer) clearTimeout(renderTimer);
-    renderTimer = setTimeout(() => { renderTimer = null; renderCategories(); }, 160);
-  }
 
   // Tabs
   const otBtn = el('button', { class: 'tab-btn' + (state.homeTab === 'ot' ? ' active' : ''), onclick: () => setTab('ot') }, '舊約');
@@ -982,15 +1045,16 @@ function renderHome() {
 
   function renderCategories() {
     list.innerHTML = '';
+    clearBtn.style.display = state.homeSearch ? 'inline-flex' : 'none';
     const cats = state.homeSearch
       ? [...OT_CATEGORIES, ...NT_CATEGORIES]
       : (state.homeTab === 'ot' ? OT_CATEGORIES : NT_CATEGORIES);
     const q = state.homeSearch.trim();
-    let anyBook = false;
+    let any = false;
     for (const cat of cats) {
       const books = cat.books.filter((b) => !q || b.includes(q));
       if (books.length === 0) continue;
-      anyBook = true;
+      any = true;
       const block = el('div', { class: 'cat-block' });
       block.appendChild(el('div', { class: 'cat-head' },
         el('div', { class: 'cat-tag' }, cat.label),
@@ -1007,36 +1071,7 @@ function renderHome() {
       block.appendChild(grid);
       list.appendChild(block);
     }
-
-    // Full-text search results across all chapter commentary.
-    // Min 2 chars to avoid dumping the corpus on single-char queries.
-    if (q.length >= 2) {
-      const hits = searchFullText(q, 80);
-      const head = el('div', { class: 'search-results-head' },
-        el('div', { class: 'search-results-title' }, '全文搜尋結果'),
-        el('div', { class: 'search-results-count' },
-          hits.length === 0 ? '無符合' :
-          (hits.length >= 80 ? '前 80 筆' : '共 ' + hits.length + ' 筆'))
-      );
-      list.appendChild(head);
-      if (hits.length > 0) {
-        const wrap = el('div', { class: 'search-results' });
-        for (const h of hits) {
-          const card = el('button', {
-            class: 'search-result',
-            onclick: () => go({ screen: 'read', book: h.book, chapter: h.chapter }),
-          });
-          card.appendChild(el('div', { class: 'search-result-loc' },
-            h.book,
-            el('span', { class: 'chapter-tag' }, '第 ' + h.chapter + ' 章')
-          ));
-          const snippet = el('div', { class: 'search-result-snippet', html: h.snippet });
-          card.appendChild(snippet);
-          wrap.appendChild(card);
-        }
-        list.appendChild(wrap);
-      }
-    } else if (!anyBook) {
+    if (!any) {
       list.appendChild(el('div', { class: 'empty' }, '找不到符合的書卷。'));
     }
   }
@@ -1047,6 +1082,107 @@ function renderHome() {
   requestAnimationFrame(() => { scroller.scrollTop = state.homeScroll; });
   scroller.addEventListener('scroll', () => { state.homeScroll = scroller.scrollTop; });
 
+  screen.appendChild(renderTabBar('home'));
+  return screen;
+}
+
+function renderSearch() {
+  const screen = el('div', { class: 'screen' });
+
+  const header = el('div', { class: 'header' });
+  header.appendChild(el('div', { class: 'title-block' },
+    el('div', { class: 'h1' }, '全文搜尋')
+  ));
+
+  const searchInput = el('input', {
+    type: 'search',
+    placeholder: '輸入關鍵字（如「以馬內利」）...',
+    value: state.fullSearchQuery,
+    oninput: (e) => {
+      state.fullSearchQuery = e.target.value;
+      clearBtn.style.display = state.fullSearchQuery ? 'inline-flex' : 'none';
+      scheduleRender();
+    },
+  });
+  const clearBtn = el('button', {
+    class: 'icon-btn',
+    style: { display: state.fullSearchQuery ? 'inline-flex' : 'none', color: 'var(--sub)' },
+    onclick: () => {
+      state.fullSearchQuery = '';
+      searchInput.value = '';
+      clearBtn.style.display = 'none';
+      renderResults();
+      searchInput.focus();
+    },
+  });
+  clearBtn.appendChild(icon('close'));
+  header.appendChild(el('div', { class: 'search' }, icon('search'), searchInput, clearBtn));
+  screen.appendChild(header);
+
+  const scroller = el('div', { class: 'scroller' });
+  const list = el('div');
+  scroller.appendChild(list);
+  screen.appendChild(scroller);
+
+  // Debounce so typing stays responsive on the ~10 MB corpus.
+  let renderTimer = null;
+  function scheduleRender() {
+    if (renderTimer) clearTimeout(renderTimer);
+    renderTimer = setTimeout(() => { renderTimer = null; renderResults(); }, 160);
+  }
+
+  function renderResults() {
+    list.innerHTML = '';
+    const q = state.fullSearchQuery.trim();
+    if (!q) {
+      list.appendChild(el('div', { class: 'search-screen-empty' },
+        '輸入關鍵字以搜尋全部章節註釋',
+        el('br'),
+        el('span', { style: { fontSize: '12px', opacity: '0.7' } }, '至少輸入 2 個字')
+      ));
+      return;
+    }
+    if (q.length < 2) {
+      list.appendChild(el('div', { class: 'search-screen-empty' }, '請至少輸入 2 個字'));
+      return;
+    }
+    const hits = searchFullText(q, 200);
+    const head = el('div', { class: 'search-results-head' },
+      el('div', { class: 'search-results-title' }, '搜尋結果'),
+      el('div', { class: 'search-results-count' },
+        hits.length === 0 ? '無符合' :
+        (hits.length >= 200 ? '前 200 筆' : '共 ' + hits.length + ' 筆'))
+    );
+    list.appendChild(head);
+    if (hits.length === 0) return;
+    const wrap = el('div', { class: 'search-results' });
+    for (const h of hits) {
+      const card = el('button', {
+        class: 'search-result',
+        onclick: () => go({ screen: 'read', book: h.book, chapter: h.chapter }),
+      });
+      card.appendChild(el('div', { class: 'search-result-loc' },
+        h.book,
+        el('span', { class: 'chapter-tag' }, '第 ' + h.chapter + ' 章')
+      ));
+      card.appendChild(el('div', { class: 'search-result-snippet', html: h.snippet }));
+      wrap.appendChild(card);
+    }
+    list.appendChild(wrap);
+  }
+
+  renderResults();
+
+  // Restore scroll position when switching back to this tab.
+  requestAnimationFrame(() => { scroller.scrollTop = state.fullSearchScroll; });
+  scroller.addEventListener('scroll', () => { state.fullSearchScroll = scroller.scrollTop; });
+
+  // Auto-focus when arriving with no prior query, so user can start typing.
+  if (!state.fullSearchQuery) {
+    requestAnimationFrame(() => searchInput.focus());
+  }
+
+  screen.appendChild(renderTabBar('search'));
   return screen;
 }
 
@@ -1298,7 +1434,8 @@ function render() {
   const root = document.getElementById('app');
   root.innerHTML = '';
   let screen;
-  if (route.screen === 'book') screen = renderBook(route.book);
+  if (route.screen === 'search') screen = renderSearch();
+  else if (route.screen === 'book') screen = renderBook(route.book);
   else if (route.screen === 'intro') screen = renderIntro(route.book, route.view);
   else if (route.screen === 'read') screen = renderRead(route.book, route.chapter);
   else screen = renderHome();
