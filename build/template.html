@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta http-equiv="cache-control" content="public, max-age=31536000">
+<title>信望愛聖經註釋</title>
+
+
+<style>
+:root {
+  --bg: #F7F0E3;
+  --card-bg: #FFFFFF;
+  --text: #1A1008;
+  --text-soft: #2A1F12;
+  --sub: rgba(26, 16, 8, 0.45);
+  --border: rgba(0, 0, 0, 0.06);
+  --divider: rgba(0, 0, 0, 0.06);
+  --tab-bg: rgba(0, 0, 0, 0.06);
+  --tab-active-bg: #FFFFFF;
+  --search-bg: rgba(0, 0, 0, 0.07);
+
+  --accent: #7B2D3E;
+  --accent-light: #F5E8EA;
+  --accent-strong: #5e1d2d;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  font-family: 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+.serif { font-family: 'Noto Serif TC', Georgia, '新細明體', 'PingFang TC', serif; }
+
+/* ── App shell ── */
+#app {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  max-width: 720px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg);
+  padding-top: env(safe-area-inset-top);
+}
+
+/* ── Header ── */
+.header {
+  padding: 12px 20px 8px;
+}
+@supports (padding: max(0px)) {
+  .header { padding-top: max(12px, calc(env(safe-area-inset-top) + 6px)); }
+}
+.title-block { margin-bottom: 16px; }
+.kicker {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.h1 {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: 'Noto Serif TC', serif;
+  line-height: 1.2;
+  color: var(--text);
+}
+.h1.lg {
+  font-size: 30px;
+}
+.h1.md {
+  font-size: 26px;
+}
+.subline {
+  font-size: 14px;
+  color: var(--sub);
+  margin-top: 4px;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 14px;
+  padding: 4px 0;
+}
+
+.accent-rule {
+  margin-top: 12px;
+  height: 2px;
+  width: 36px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* ── Search ── */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--search-bg);
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+.search input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── OT/NT tabs ── */
+.tab-row {
+  display: flex;
+  background: var(--tab-bg);
+  border-radius: 10px;
+  padding: 3px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--sub);
+  font-weight: 400;
+  font-size: 14px;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.tab-btn.active {
+  background: var(--tab-active-bg);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+
+/* ── Body scroll area ── */
+.scroller {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 20px 32px;
+}
+
+/* ── Categories & books ── */
+.cat-block + .cat-block { margin-top: 24px; }
+.cat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.cat-tag {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 1.2px;
+}
+.cat-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--divider);
+}
+.cat-count {
+  font-size: 14px;
+  color: var(--sub);
+}
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.book-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 10px 12px 11px;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: 'Noto Serif TC', serif;
+  line-height: 1.3;
+  word-break: keep-all;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+.book-card:active { transform: scale(0.98); opacity: 0.85; }
+
+/* ── Chapter screen ── */
+.intro-cards {
+  padding: 0 20px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.intro-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+.intro-card-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+.intro-card-icon.solid {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 3px 10px rgba(123,45,62,0.25);
+}
+.intro-card-text { flex: 1; }
+.intro-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: 'Noto Serif TC', serif;
+  margin-bottom: 3px;
+}
+.intro-card-sub { font-size: 14px; color: var(--sub); }
+.intro-card-arrow { color: var(--sub); }
+
+.chapter-grid {
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.chapter-card {
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text);
+  font-family: 'Noto Serif TC', serif;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease;
+}
+.chapter-card:active { transform: scale(0.95); }
+
+/* ── Intro detail ── */
+.intro-section { margin-bottom: 28px; }
+.intro-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.intro-section-tag {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-light);
+  border-radius: 6px;
+  padding: 3px 10px;
+  letter-spacing: 0.3px;
+  font-family: 'Noto Serif TC', serif;
+  white-space: nowrap;
+}
+.intro-section-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--divider);
+}
+.intro-section-body {
+  font-size: 17px;
+  line-height: 1.95;
+  color: var(--text-soft);
+  font-family: 'Noto Serif TC', serif;
+  letter-spacing: 0.2px;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  line-break: auto;
+}
+/* Each intro line is rendered as a regular body paragraph — no heading
+   typography, just a small gap between enumerated items. The visual
+   structure is already provided by the burgundy section "tag" header. */
+.intro-section-body .intro-line {
+  margin: 0;
+}
+.intro-section-body .intro-line + .intro-line {
+  margin-top: 0.4em;
+}
+.intro-section-body .body-spacer {
+  height: 0.6em;
+}
+.intro-empty-divider {
+  margin-bottom: 16px;
+}
+.intro-empty-divider .intro-section-body { display: none; }
+
+.preface-body {
+  font-size: 16px;
+  line-height: 2.1;
+  color: var(--text-soft);
+  font-family: 'Noto Serif TC', serif;
+  white-space: pre-wrap;
+  letter-spacing: 0.3px;
+}
+
+/* ── Reading screen ── */
+.reading-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tool-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--sub);
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn.accent { color: var(--accent); }
+
+.font-controls {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 12px;
+  padding: 10px 16px;
+}
+.font-controls span { font-size: 14px; color: var(--sub); }
+.font-controls .stepper {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.font-controls button {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--divider);
+  background: var(--bg);
+  font-size: 18px;
+  color: var(--text);
+}
+
+.chapter-title-block {
+  margin-bottom: 24px;
+}
+
+.chapter-body {
+  font-size: 17px;
+  line-height: 1.95;
+  color: var(--text-soft);
+  font-family: 'Noto Serif TC', serif;
+  letter-spacing: 0.3px;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  line-break: auto;
+}
+/* Each logical line is its own block with semantic class; visual hierarchy is
+   conveyed through typography (size / weight / color / spacing) instead of
+   left-indentation, which reads better on a narrow phone screen. */
+.ln {
+  margin: 0;
+}
+.ln-h1 {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 1.2em;
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: 1.5em;
+  margin-bottom: 0.15em;
+  letter-spacing: 0.4px;
+  line-height: 1.55;
+}
+.ln-h2 {
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 1.15em;
+  margin-bottom: 0.1em;
+  line-height: 1.6;
+}
+.ln-h3 {
+  font-size: 1.02em;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 0.95em;
+  margin-bottom: 0.05em;
+  line-height: 1.65;
+}
+.ln-h4 {
+  font-size: 1em;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 0.75em;
+  line-height: 1.7;
+}
+.ln-h5 {
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 0.5em;
+  line-height: 1.85;
+}
+/* The first heading in a chapter shouldn't push down from a non-existent
+   sibling; this avoids an awkward gap below the chapter title block. */
+.commentary-body > .ln:first-child { margin-top: 0; }
+.commentary-body > .body-spacer:first-child { display: none; }
+
+.ln-bullet { margin-top: 0.25em; line-height: 1.95; }
+.ln-thought {
+  margin-top: 0.25em;
+  line-height: 1.95;
+  color: var(--text-soft);
+}
+.ln-ref {
+  font-size: 0.92em;
+  color: var(--sub);
+  margin-top: 0.2em;
+  line-height: 1.65;
+}
+.ln-note {
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 0.5em;
+  line-height: 1.85;
+}
+.ln-body { margin-top: 0.25em; line-height: 1.95; }
+.body-spacer {
+  height: 0.6em;
+}
+
+/* ── Persistent bottom chapter nav bar ── */
+.chapter-nav-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  padding-bottom: max(8px, calc(env(safe-area-inset-bottom) + 4px));
+  border-top: 1px solid var(--divider);
+  z-index: 100;
+  background: rgba(247, 240, 227, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.chapter-nav-bar .nav-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.14s, opacity 0.14s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+.chapter-nav-bar .nav-btn:active { background: var(--accent-light); }
+.chapter-nav-bar .nav-btn[disabled] { opacity: 0.28; cursor: default; box-shadow: none; }
+.chapter-nav-bar .nav-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.chapter-nav-bar .nav-chapter {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: 'Noto Serif TC', serif;
+  line-height: 1.2;
+}
+.chapter-nav-bar .nav-book {
+  font-size: 12px;
+  color: var(--sub);
+  letter-spacing: 0.3px;
+}
+
+/* Empty state */
+.empty {
+  margin: 32px 0;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(123,45,62,0.06);
+  border: 1px solid var(--divider);
+  font-size: 14px;
+  color: var(--sub);
+  line-height: 1.7;
+  font-family: 'Noto Serif TC', serif;
+  text-align: center;
+}
+
+/* SVG icons inherit currentColor */
+svg { display: block; }
+
+/* Wider screens: keep iPhone-ish max width and add a subtle frame */
+@media (min-width: 600px) {
+  body { background: #ece1cb; }
+  #app {
+    margin: 24px auto;
+    border-radius: 28px;
+    box-shadow: 0 6px 28px rgba(0,0,0,0.10);
+    overflow: hidden;
+    min-height: calc(100vh - 48px);
+  }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* === Data injected at build time === */
+const DATA = __BIBLE_DATA__;
+
+/* === Book groupings (matching the design's categories) === */
+const OT_BOOKS = [
+  '創世記', '出埃及記', '利未記', '民數記', '申命記',
+  '約書亞記', '士師記', '路得記', '撒母耳記上', '撒母耳記下',
+  '列王紀上', '列王紀下', '歷代志上', '歷代志下', '以斯拉記',
+  '尼希米記', '以斯帖記', '約伯記', '詩篇', '箴言',
+  '傳道書', '雅歌', '以賽亞書', '耶利米書', '耶利米哀歌',
+  '以西結書', '但以理書', '何西阿書', '約珥書', '阿摩司書',
+  '俄巴底亞書', '約拿書', '彌迦書', '那鴻書', '哈巴谷書',
+  '西番雅書', '哈該書', '撒迦利亞書', '瑪拉基書'
+];
+const NT_BOOKS = [
+  '馬太福音', '馬可福音', '路加福音', '約翰福音', '使徒行傳',
+  '羅馬書', '哥林多前書', '哥林多後書', '加拉太書', '以弗所書',
+  '腓利比書', '歌羅西書', '帖撒羅尼迦前書', '帖撒羅尼迦後書', '提摩太前書',
+  '提摩太後書', '提多書', '腓利門書', '希伯來書', '雅各書',
+  '彼得前書', '彼得後書', '約翰壹書', '約翰貳書', '約翰參書',
+  '猶大書', '啟示錄'
+];
+
+const OT_CATEGORIES = [
+  { label: '摩西五經', books: ['創世記', '出埃及記', '利未記', '民數記', '申命記'] },
+  { label: '歷史書', books: ['約書亞記', '士師記', '路得記', '撒母耳記上', '撒母耳記下', '列王紀上', '列王紀下', '歷代志上', '歷代志下', '以斯拉記', '尼希米記', '以斯帖記'] },
+  { label: '詩歌書', books: ['約伯記', '詩篇', '箴言', '傳道書', '雅歌'] },
+  { label: '大先知書', books: ['以賽亞書', '耶利米書', '耶利米哀歌', '以西結書', '但以理書'] },
+  { label: '小先知書', books: ['何西阿書', '約珥書', '阿摩司書', '俄巴底亞書', '約拿書', '彌迦書', '那鴻書', '哈巴谷書', '西番雅書', '哈該書', '撒迦利亞書', '瑪拉基書'] }
+];
+const NT_CATEGORIES = [
+  { label: '福音書', books: ['馬太福音', '馬可福音', '路加福音', '約翰福音'] },
+  { label: '使徒行傳', books: ['使徒行傳'] },
+  { label: '保羅書信', books: ['羅馬書', '哥林多前書', '哥林多後書', '加拉太書', '以弗所書', '腓利比書', '歌羅西書', '帖撒羅尼迦前書', '帖撒羅尼迦後書', '提摩太前書', '提摩太後書', '提多書', '腓利門書'] },
+  { label: '普通書信', books: ['希伯來書', '雅各書', '彼得前書', '彼得後書', '約翰壹書', '約翰貳書', '約翰參書', '猶大書'] },
+  { label: '啟示錄', books: ['啟示錄'] }
+];
+
+const BOOK_INDEX = {};
+for (const b of DATA.books) BOOK_INDEX[b.name] = b;
+
+/* === Routing via hash === */
+function readRoute() {
+  const h = location.hash.replace(/^#/, '');
+  if (!h) return { screen: 'home' };
+  const parts = h.split('/').map(decodeURIComponent);
+  if (parts[0] === 'book' && parts[1]) return { screen: 'book', book: parts[1] };
+  if (parts[0] === 'intro' && parts[1]) return { screen: 'intro', book: parts[1], view: parts[2] || 'background' };
+  if (parts[0] === 'read' && parts[1] && parts[2]) return { screen: 'read', book: parts[1], chapter: parseInt(parts[2], 10) };
+  return { screen: 'home' };
+}
+function go(route) {
+  let h = '';
+  if (route.screen === 'book') h = 'book/' + encodeURIComponent(route.book);
+  else if (route.screen === 'intro') h = 'intro/' + encodeURIComponent(route.book) + '/' + (route.view || 'background');
+  else if (route.screen === 'read') h = 'read/' + encodeURIComponent(route.book) + '/' + route.chapter;
+  if (location.hash.replace(/^#/, '') !== h) location.hash = h;
+}
+
+/* === State === */
+const state = {
+  homeTab: localStorage.getItem('home-tab') || 'nt',
+  homeSearch: '',
+  homeScroll: 0,
+  fontSize: parseInt(localStorage.getItem('reading-font') || '17', 10),
+  showFontControls: false,
+};
+
+/* === Text transforms ===
+ * `nb()` keeps scripture references (CJK book abbreviation + space + verse range)
+ * as a single unbreakable unit by swapping the space for U+00A0 NBSP. Without
+ * this, mobile browsers happily break "撒下 7:11-16" at the space, splitting
+ * the reference across two lines.
+ */
+const nb = (text) => {
+  if (!text) return '';
+  // Scripture-reference glue. Match a 1–3 char CJK book abbreviation followed
+  // by whitespace + a digit-style reference (e.g. "1", "1:1", "1:1-2", "1:1-2:3",
+  // "1:1,5", "1:1~3"). The space between abbreviation and number is replaced with
+  // U+00A0 NBSP and any internal whitespace inside the range is collapsed away,
+  // so the whole reference cannot break across two lines on a narrow screen.
+  return text.replace(
+    /([\u3400-\u9fff]{1,3})([ \t\u3000]+)(\d{1,3}(?::\d{1,3})?(?:\s*[\-,\uFF0C\u2013~\uFF5E]\s*\d{1,3}(?::\d{1,3})?)*)/g,
+    (_m, abbr, _ws, ref) => abbr + ' ' + ref.replace(/\s+/g, '')
+  );
+};
+
+/* === Commentary body renderer ===
+ * The source text uses fixed-width whitespace indentation (typically 2 spaces
+ * per nesting level) which works on a desktop monitor but eats too much screen
+ * width on a phone. Instead of rendering literal indentation, we:
+ *   1. Compute the chapter's minimum leading-whitespace count so the chapter
+ *      starts at depth 0 regardless of where it sits in the source's section
+ *      hierarchy (e.g. Matthew 2 starts at "  三、" — that 2-space prefix is
+ *      considered the chapter's baseline and stripped).
+ *   2. For each non-blank line, derive a depth = floor((lead - min) / 2),
+ *      capped at 6, and render as a <div.body-line> with proportional
+ *      padding-left in `em`s (so the indent scales with the user's font-size).
+ *   3. Blank source lines become <div.body-spacer> for visual separation.
+ *   4. Pass each line's content through nb() to keep scripture references on
+ *      one line.
+ */
+const DEPTH_EM = 0.7; // padding-left per nesting level, in em
+const renderCommentaryLines = (text) => {
+  if (!text) return [];
+  // Classify each line by its leading marker so we can render with semantic
+  // typography (heading sizes, accent colors, muted refs) instead of literal
+  // whitespace indentation. This produces a much cleaner reading layout on
+  // narrow phone screens.
+  const classify = (raw) => {
+    const t = raw.replace(/^[\s\u3000]+/, '');
+    if (!t) return null;
+    if (/^[\u58F9\u8CB3\u53C3\u8086\u4F0D\u9678\u67D2\u634C\u7396\u62FE]\u3001/.test(t)) return { kind: 'h1', text: t };
+    if (/^[\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343]+\u3001/.test(t)) return { kind: 'h2', text: t };
+    if (/^[\uFF08(][\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u7532\u4E59\u4E19\u4E01]+[\uFF09)]/.test(t)) return { kind: 'h3', text: t };
+    if (/^\d+\.[^\d:]/.test(t)) return { kind: 'h4', text: t };
+    if (/^[\u7532\u4E59\u4E19\u4E01\u620A\u5DF1\u5E9A\u8F9B\u58EC\u7678]\u3001/.test(t)) return { kind: 'h4', text: t };
+    if (/^\(\s*\d+\s*\)/.test(t)) return { kind: 'h5', text: t };
+    if (/^[A-Za-z]\./.test(t)) return { kind: 'h5', text: t };
+    if (/^\u25CF/.test(t)) return { kind: 'bullet', text: t };
+    if (/^\u25CE/.test(t)) return { kind: 'thought', text: t };
+    if (/^\u25CB/.test(t)) return { kind: 'ref', text: t };
+    if (/^[\u2606\u2605]/.test(t)) return { kind: 'note', text: t };
+    return { kind: 'body', text: t };
+  };
+  const out = [];
+  let prev = null;
+  for (const raw of text.split('\n')) {
+    const cls = classify(raw);
+    if (!cls) {
+      // Blank line — light spacer; collapse runs of blanks.
+      if (prev !== 'spacer') out.push(el('div', { class: 'body-spacer' }));
+      prev = 'spacer';
+      continue;
+    }
+    out.push(el('div', { class: 'ln ln-' + cls.kind }, nb(cls.text)));
+    prev = cls.kind;
+  }
+  // Trim trailing spacer if any.
+  while (out.length && out[out.length - 1].className === 'body-spacer') out.pop();
+  return out;
+};
+
+/* === Intro-section body renderer ===
+ * The intro page already conveys top-level structure via burgundy "tag"
+ * headers (零、背景 / 一、作者 / …). Inside each section, content is just
+ * an enumerated list of points — `（一）/（二）/1./2.` are numbering, NOT
+ * sub-headings. So we render every line as a regular body paragraph with
+ * leading whitespace stripped (so it reads cleanly on mobile) and a small
+ * gap between items. No bold/heading typography here, by design — that's
+ * what makes this distinct from the chapter renderer.
+ */
+const renderIntroLines = (text) => {
+  if (!text) return [];
+  const out = [];
+  let prevBlank = true;
+  for (const raw of text.split('\n')) {
+    if (raw.trim() === '') {
+      if (!prevBlank) out.push(el('div', { class: 'body-spacer' }));
+      prevBlank = true;
+      continue;
+    }
+    const stripped = raw.replace(/^[\s　]+/, '');
+    out.push(el('div', { class: 'intro-line' }, nb(stripped)));
+    prevBlank = false;
+  }
+  while (out.length && out[out.length - 1].className === 'body-spacer') out.pop();
+  return out;
+};
+
+/* === Font-size toolbar (shared by Reading / Intro / Preface screens) ===
+ * `bodies` is an array of elements whose font-size we want to control. Returns
+ * { toggleBtn, controlsBar } so callers can mount them however the layout
+ * needs. The toolbar reflects and updates the global `state.fontSize`, so the
+ * size stays consistent when navigating between chapter and intro/preface.
+ */
+function buildFontToolbar(bodies) {
+  let visible = !!state.showFontControls;
+  const controls = el('div', {
+    class: 'font-controls',
+    style: { display: visible ? 'flex' : 'none' },
+  });
+  const valSpan = el('span', { style: { color: 'var(--text)' } }, String(state.fontSize));
+  const apply = (v) => {
+    v = Math.max(14, Math.min(24, v));
+    state.fontSize = v;
+    localStorage.setItem('reading-font', String(v));
+    valSpan.textContent = String(v);
+    for (const b of bodies) if (b) b.style.fontSize = v + 'px';
+  };
+  const minus = el('button', { onclick: () => apply(state.fontSize - 1) }, '-');
+  const plus = el('button', { onclick: () => apply(state.fontSize + 1) }, '+');
+  const stepper = el('div', { class: 'stepper' }, minus, valSpan, plus);
+  controls.appendChild(el('span', null, '字體大小'));
+  controls.appendChild(stepper);
+
+  const toggleBtn = el('button', {
+    class: 'icon-btn',
+    onclick: () => {
+      visible = !visible;
+      state.showFontControls = visible;
+      controls.style.display = visible ? 'flex' : 'none';
+    },
+  });
+  toggleBtn.appendChild(icon('textSize'));
+
+  return { toggleBtn, controls };
+}
+
+/* === Tiny DOM helpers === */
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') node.className = v;
+      else if (k === 'style' && typeof v === 'object') Object.assign(node.style, v);
+      else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2).toLowerCase(), v);
+      else if (k === 'html') node.innerHTML = v;
+      else if (v === true) node.setAttribute(k, '');
+      else node.setAttribute(k, v);
+    }
+  }
+  for (const c of children.flat()) {
+    if (c == null || c === false) continue;
+    node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  }
+  return node;
+}
+
+const ICONS = {
+  search: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  close: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  chevronLeft: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chevronRight: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  person: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  notes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  textSize: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><text x="2" y="18" font-size="10" fill="currentColor" font-family="sans-serif">A</text><text x="11" y="20" font-size="14" fill="currentColor" font-family="sans-serif" font-weight="700">A</text></svg>',
+};
+
+function icon(name, klass) {
+  const span = document.createElement('span');
+  span.className = 'icon ' + (klass || '');
+  span.style.display = 'inline-flex';
+  span.innerHTML = ICONS[name] || '';
+  return span;
+}
+
+/* === Screens === */
+function renderHome() {
+  const screen = el('div', { class: 'screen' });
+
+  // Header
+  const header = el('div', { class: 'header' });
+  header.appendChild(el('div', { class: 'title-block' },
+    el('div', { class: 'h1' }, '信望愛聖經註釋')
+  ));
+
+  // Search
+  const searchInput = el('input', {
+    type: 'search',
+    placeholder: '搜尋書卷（跨舊約新約）...',
+    value: state.homeSearch,
+    oninput: (e) => { state.homeSearch = e.target.value; renderCategories(); },
+  });
+  const clearBtn = el('button', {
+    class: 'icon-btn',
+    style: { display: state.homeSearch ? 'inline-flex' : 'none', color: 'var(--sub)' },
+    onclick: () => { state.homeSearch = ''; searchInput.value = ''; clearBtn.style.display = 'none'; renderCategories(); },
+  });
+  clearBtn.appendChild(icon('close'));
+  const searchBox = el('div', { class: 'search' }, icon('search'), searchInput, clearBtn);
+  header.appendChild(searchBox);
+
+  // Tabs
+  const otBtn = el('button', { class: 'tab-btn' + (state.homeTab === 'ot' ? ' active' : ''), onclick: () => setTab('ot') }, '舊約');
+  const ntBtn = el('button', { class: 'tab-btn' + (state.homeTab === 'nt' ? ' active' : ''), onclick: () => setTab('nt') }, '新約');
+  const tabRow = el('div', { class: 'tab-row' }, otBtn, ntBtn);
+  header.appendChild(tabRow);
+
+  function setTab(t) {
+    state.homeTab = t;
+    localStorage.setItem('home-tab', t);
+    otBtn.classList.toggle('active', t === 'ot');
+    ntBtn.classList.toggle('active', t === 'nt');
+    renderCategories();
+  }
+
+  screen.appendChild(header);
+
+  // Scroller
+  const scroller = el('div', { class: 'scroller' });
+  const list = el('div');
+  scroller.appendChild(list);
+  screen.appendChild(scroller);
+
+  function renderCategories() {
+    list.innerHTML = '';
+    const cats = state.homeSearch
+      ? [...OT_CATEGORIES, ...NT_CATEGORIES]
+      : (state.homeTab === 'ot' ? OT_CATEGORIES : NT_CATEGORIES);
+    const q = state.homeSearch.trim();
+    let any = false;
+    for (const cat of cats) {
+      const books = cat.books.filter((b) => !q || b.includes(q));
+      if (books.length === 0) continue;
+      any = true;
+      const block = el('div', { class: 'cat-block' });
+      block.appendChild(el('div', { class: 'cat-head' },
+        el('div', { class: 'cat-tag' }, cat.label),
+        el('div', { class: 'cat-rule' }),
+        el('div', { class: 'cat-count' }, books.length + '卷')
+      ));
+      const grid = el('div', { class: 'book-grid' });
+      for (const book of books) {
+        grid.appendChild(el('button', {
+          class: 'book-card',
+          onclick: () => go({ screen: 'book', book }),
+        }, book));
+      }
+      block.appendChild(grid);
+      list.appendChild(block);
+    }
+    if (!any) {
+      list.appendChild(el('div', { class: 'empty' }, '找不到符合的書卷。'));
+    }
+  }
+
+  renderCategories();
+
+  // Restore scroll on this screen.
+  requestAnimationFrame(() => { scroller.scrollTop = state.homeScroll; });
+  scroller.addEventListener('scroll', () => { state.homeScroll = scroller.scrollTop; });
+
+  return screen;
+}
+
+function renderBook(book) {
+  const meta = BOOK_INDEX[book];
+  if (!meta) return renderHome();
+  const screen = el('div', { class: 'screen' });
+
+  const header = el('div', { class: 'header' });
+  const back = el('button', { class: 'back-btn', onclick: () => go({ screen: 'home' }) });
+  back.appendChild(icon('chevronLeft'));
+  back.appendChild(document.createTextNode('書卷'));
+  header.appendChild(back);
+  header.appendChild(el('div', { class: 'kicker' }, '選擇章節'));
+  header.appendChild(el('div', { class: 'h1 lg' }, book));
+  header.appendChild(el('div', { class: 'subline' }, '共 ' + meta.chapterCount + ' 章'));
+  screen.appendChild(header);
+
+  const scroller = el('div', { class: 'scroller', style: { paddingLeft: '0', paddingRight: '0' } });
+
+  // Intro cards
+  const intros = DATA.intros[book] || [];
+  const preface = DATA.authorPrefaces[book];
+  const hasIntro = intros.length > 0;
+  if (preface || hasIntro) {
+    const cards = el('div', { class: 'intro-cards' });
+    if (preface) {
+      const card = el('button', {
+        class: 'intro-card',
+        onclick: () => go({ screen: 'intro', book, view: 'author' }),
+      });
+      const ic = el('div', { class: 'intro-card-icon' });
+      ic.appendChild(icon('person'));
+      card.appendChild(ic);
+      card.appendChild(el('div', { class: 'intro-card-text' },
+        el('div', { class: 'intro-card-title' }, '註釋作者前言'),
+        el('div', { class: 'intro-card-sub' }, '查經工作背景說明')
+      ));
+      const arrow = el('span', { class: 'intro-card-arrow' });
+      arrow.appendChild(icon('chevronRight'));
+      card.appendChild(arrow);
+      cards.appendChild(card);
+    }
+    if (hasIntro) {
+      const card = el('button', {
+        class: 'intro-card',
+        onclick: () => go({ screen: 'intro', book, view: 'background' }),
+      });
+      const ic = el('div', { class: 'intro-card-icon solid' });
+      ic.appendChild(icon('notes'));
+      card.appendChild(ic);
+      card.appendChild(el('div', { class: 'intro-card-text' },
+        el('div', { class: 'intro-card-title' }, '查經背景資料'),
+        el('div', { class: 'intro-card-sub' }, '書卷背景、作者、寫作年代、考古')
+      ));
+      const arrow = el('span', { class: 'intro-card-arrow' });
+      arrow.appendChild(icon('chevronRight'));
+      card.appendChild(arrow);
+      cards.appendChild(card);
+    }
+    scroller.appendChild(cards);
+  }
+
+  // Chapter grid
+  const grid = el('div', { class: 'chapter-grid' });
+  for (let i = 1; i <= meta.chapterCount; i++) {
+    grid.appendChild(el('button', {
+      class: 'chapter-card',
+      onclick: () => go({ screen: 'read', book, chapter: i }),
+    }, String(i)));
+  }
+  scroller.appendChild(grid);
+
+  screen.appendChild(scroller);
+  return screen;
+}
+
+function renderIntro(book, view) {
+  const meta = BOOK_INDEX[book];
+  if (!meta) return renderHome();
+  const screen = el('div', { class: 'screen' });
+
+  const header = el('div', { class: 'header', style: { borderBottom: '1px solid var(--divider)', paddingBottom: '14px' } });
+
+  // Top row: back button + (later) font-size toggle.
+  const topRow = el('div', { class: 'reading-toolbar' });
+  const back = el('button', { class: 'back-btn', style: { marginBottom: '0' }, onclick: () => go({ screen: 'book', book }) });
+  back.appendChild(icon('chevronLeft'));
+  back.appendChild(document.createTextNode(book));
+  topRow.appendChild(back);
+  const tools = el('div', { class: 'tool-row' });
+  topRow.appendChild(tools);
+  header.appendChild(topRow);
+
+  const isAuthor = view === 'author';
+  header.appendChild(el('div', { class: 'kicker', style: { marginTop: '14px' } }, isAuthor ? '查經工作背景說明' : '查經背景資料'));
+  header.appendChild(el('div', { class: 'h1 md' }, isAuthor ? '作者序' : (book + '簡介')));
+  header.appendChild(el('div', { class: 'accent-rule' }));
+
+  // Body content (built first so we can wire it to the font-size toolbar).
+  const scroller = el('div', { class: 'scroller', style: { padding: '20px 22px 32px' } });
+  const fontBodies = [];
+
+  if (isAuthor) {
+    const preface = DATA.authorPrefaces[book];
+    if (!preface) {
+      scroller.appendChild(el('div', { class: 'empty' }, '暫無作者序'));
+    } else {
+      const body = el('div', { class: 'preface-body', style: { fontSize: state.fontSize + 'px' } }, nb(preface));
+      fontBodies.push(body);
+      scroller.appendChild(body);
+    }
+  } else {
+    const intros = DATA.intros[book] || [];
+    if (intros.length === 0) {
+      scroller.appendChild(el('div', { class: 'empty' }, '此書卷暫無背景資料'));
+    } else {
+      for (const sec of intros) {
+        if (!sec.body) {
+          // Section with title only — render as a divider with the title.
+          if (!sec.title) continue;
+          const div = el('div', { class: 'intro-section intro-empty-divider' });
+          const head = el('div', { class: 'intro-section-head' });
+          head.appendChild(el('div', {
+            class: 'intro-section-tag',
+            style: { opacity: '0.7' },
+          }, truncTitle(sec.title)));
+          head.appendChild(el('div', { class: 'intro-section-rule' }));
+          div.appendChild(head);
+          scroller.appendChild(div);
+          continue;
+        }
+        const sect = el('div', { class: 'intro-section' });
+        if (sec.title) {
+          const head = el('div', { class: 'intro-section-head' });
+          head.appendChild(el('div', { class: 'intro-section-tag' }, truncTitle(sec.title)));
+          head.appendChild(el('div', { class: 'intro-section-rule' }));
+          sect.appendChild(head);
+        }
+        const body = el('div', { class: 'intro-section-body', style: { fontSize: state.fontSize + 'px' } });
+        for (const node of renderIntroLines(sec.body)) body.appendChild(node);
+        fontBodies.push(body);
+        sect.appendChild(body);
+        scroller.appendChild(sect);
+      }
+    }
+  }
+
+  // Mount the font-size toolbar (visible only when the page has scalable text).
+  if (fontBodies.length > 0) {
+    const fontTb = buildFontToolbar(fontBodies);
+    tools.appendChild(fontTb.toggleBtn);
+    header.appendChild(fontTb.controls);
+  }
+
+  screen.appendChild(header);
+  screen.appendChild(scroller);
+  return screen;
+}
+
+function truncTitle(t) {
+  // Strip trailing colon and clip overlong titles for the inline tag.
+  const s = (t || '').replace(/[：:]\s*$/, '').trim();
+  return s.length > 16 ? s.slice(0, 16) + '…' : s;
+}
+
+function renderRead(book, chapter) {
+  const meta = BOOK_INDEX[book];
+  if (!meta) return renderHome();
+  const screen = el('div', { class: 'screen' });
+
+  const header = el('div', { class: 'header', style: { borderBottom: '1px solid var(--divider)', paddingBottom: '14px' } });
+
+  const text = (DATA.chapters[book] || {})[String(chapter)] || '';
+  const bodyText = el('div', { class: 'chapter-body commentary-body', style: { fontSize: state.fontSize + 'px' } });
+  for (const node of renderCommentaryLines(text || '')) bodyText.appendChild(node);
+
+  const fontTb = buildFontToolbar([bodyText]);
+
+  const toolbar = el('div', { class: 'reading-toolbar' });
+  const back = el('button', { class: 'back-btn', style: { marginBottom: '0' }, onclick: () => go({ screen: 'book', book }) });
+  back.appendChild(icon('chevronLeft'));
+  back.appendChild(document.createTextNode(book));
+  toolbar.appendChild(back);
+  toolbar.appendChild(el('div', { class: 'tool-row' }, fontTb.toggleBtn));
+  header.appendChild(toolbar);
+  header.appendChild(fontTb.controls);
+
+  screen.appendChild(header);
+
+  // Body
+  const scroller = el('div', { class: 'scroller', style: { padding: '24px 22px 96px' } });
+  scroller.appendChild(el('div', { class: 'chapter-title-block' },
+    el('div', { class: 'kicker' }, '第 ' + chapter + ' 章'),
+    el('div', { class: 'h1 md' }, book),
+    el('div', { class: 'accent-rule' })
+  ));
+  if (!text) {
+    scroller.appendChild(el('div', { class: 'empty' },
+      '本章暫無註釋內容。',
+      el('br'),
+      el('span', { style: { fontSize: '14px', opacity: '0.6' } }, '「你的話是我腳前的燈，是我路上的光。」 詩篇 119:105')
+    ));
+  } else {
+    scroller.appendChild(bodyText);
+  }
+
+  screen.appendChild(scroller);
+
+  // Persistent bottom chapter nav bar
+  const navBar = el('div', { class: 'chapter-nav-bar' });
+
+  const chevL = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const chevR = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  const prevBtn = el('button', {
+    class: 'nav-btn',
+    title: '上一章',
+    disabled: chapter <= 1 || undefined,
+    onclick: () => go({ screen: 'read', book, chapter: chapter - 1 }),
+  });
+  prevBtn.innerHTML = chevL;
+
+  const nextBtn = el('button', {
+    class: 'nav-btn',
+    title: '下一章',
+    disabled: chapter >= meta.chapterCount || undefined,
+    onclick: () => go({ screen: 'read', book, chapter: chapter + 1 }),
+  });
+  nextBtn.innerHTML = chevR;
+
+  const center = el('div', { class: 'nav-center' });
+  center.appendChild(el('div', { class: 'nav-chapter' }, '第 ' + chapter + ' 章'));
+  center.appendChild(el('div', { class: 'nav-book' }, book + '　' + chapter + ' / ' + meta.chapterCount));
+
+  navBar.appendChild(prevBtn);
+  navBar.appendChild(center);
+  navBar.appendChild(nextBtn);
+  screen.appendChild(navBar);
+
+  // Scroll body to top on chapter change.
+  requestAnimationFrame(() => { scroller.scrollTop = 0; });
+  return screen;
+}
+
+/* === Render dispatch === */
+function render() {
+  const route = readRoute();
+  const root = document.getElementById('app');
+  root.innerHTML = '';
+  let screen;
+  if (route.screen === 'book') screen = renderBook(route.book);
+  else if (route.screen === 'intro') screen = renderIntro(route.book, route.view);
+  else if (route.screen === 'read') screen = renderRead(route.book, route.chapter);
+  else screen = renderHome();
+  root.appendChild(screen);
+  window.scrollTo(0, 0);
+}
+
+window.addEventListener('hashchange', render);
+render();
+</script>
+
+
+</body></html>
