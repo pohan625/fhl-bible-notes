@@ -527,6 +527,68 @@ button { font: inherit; color: inherit; cursor: pointer; }
   letter-spacing: 0.3px;
 }
 
+/* ── Full-text search results ── */
+.search-results {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.search-results-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 6px 2px 4px;
+}
+.search-results-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+.search-results-count {
+  font-size: 13px;
+  color: var(--sub);
+}
+.search-result {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 11px 14px 12px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+.search-result:active { transform: scale(0.99); opacity: 0.85; }
+.search-result-loc {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: 'Noto Serif TC', serif;
+}
+.search-result-loc .chapter-tag {
+  color: var(--accent);
+  margin-left: 6px;
+  font-weight: 600;
+}
+.search-result-snippet {
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.65;
+  font-family: 'Noto Serif TC', serif;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.search-result-snippet mark {
+  background: var(--accent-light);
+  color: var(--accent-strong);
+  padding: 0 2px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+
 /* Empty state */
 .empty {
   margin: 32px 0;
@@ -601,6 +663,56 @@ const NT_CATEGORIES = [
 
 const BOOK_INDEX = {};
 for (const b of DATA.books) BOOK_INDEX[b.name] = b;
+
+/* === Full-text search ===
+ * Plain `String.indexOf` scan over every chapter's commentary text. The whole
+ * corpus is ~10 MB of CJK text in memory; a linear pass takes ~50–150 ms on a
+ * modern phone, which is fine behind a 160 ms input debounce. Returns up to
+ * `limit` hits, each with an HTML snippet around the first match (with the
+ * query highlighted via <mark>). HTML-escapes the snippet so source text
+ * cannot inject markup.
+ */
+const SNIPPET_RADIUS = 28;
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[c]);
+}
+function makeSnippet(text, idx, qLen) {
+  const start = Math.max(0, idx - SNIPPET_RADIUS);
+  const end = Math.min(text.length, idx + qLen + SNIPPET_RADIUS);
+  const before = (start > 0 ? '…' : '') + text.slice(start, idx);
+  const hit = text.slice(idx, idx + qLen);
+  const after = text.slice(idx + qLen, end) + (end < text.length ? '…' : '');
+  // Collapse newlines/whitespace so the snippet reads as a single line.
+  const norm = (s) => s.replace(/\s+/g, ' ');
+  return escapeHtml(norm(before)) +
+    '<mark>' + escapeHtml(norm(hit)) + '</mark>' +
+    escapeHtml(norm(after));
+}
+function searchFullText(query, limit) {
+  const q = query.trim();
+  if (!q) return [];
+  const qLen = q.length;
+  const hits = [];
+  // Walk in canonical book order so results group naturally.
+  const order = [...OT_BOOKS, ...NT_BOOKS];
+  for (const book of order) {
+    const chs = DATA.chapters[book];
+    if (!chs) continue;
+    const meta = BOOK_INDEX[book];
+    const total = (meta && meta.chapterCount) || Object.keys(chs).length;
+    for (let i = 1; i <= total; i++) {
+      const text = chs[String(i)];
+      if (!text) continue;
+      const idx = text.indexOf(q);
+      if (idx < 0) continue;
+      hits.push({ book, chapter: i, snippet: makeSnippet(text, idx, qLen) });
+      if (hits.length >= limit) return hits;
+    }
+  }
+  return hits;
+}
 
 /* === Routing via hash === */
 function readRoute() {
@@ -822,9 +934,13 @@ function renderHome() {
   // Search
   const searchInput = el('input', {
     type: 'search',
-    placeholder: '搜尋書卷（跨舊約新約）...',
+    placeholder: '搜尋書卷或全文（如「以馬內利」）...',
     value: state.homeSearch,
-    oninput: (e) => { state.homeSearch = e.target.value; renderCategories(); },
+    oninput: (e) => {
+      state.homeSearch = e.target.value;
+      clearBtn.style.display = state.homeSearch ? 'inline-flex' : 'none';
+      scheduleRender();
+    },
   });
   const clearBtn = el('button', {
     class: 'icon-btn',
@@ -834,6 +950,13 @@ function renderHome() {
   clearBtn.appendChild(icon('close'));
   const searchBox = el('div', { class: 'search' }, icon('search'), searchInput, clearBtn);
   header.appendChild(searchBox);
+
+  // Debounce full-text search so typing stays responsive on the ~10 MB corpus.
+  let renderTimer = null;
+  function scheduleRender() {
+    if (renderTimer) clearTimeout(renderTimer);
+    renderTimer = setTimeout(() => { renderTimer = null; renderCategories(); }, 160);
+  }
 
   // Tabs
   const otBtn = el('button', { class: 'tab-btn' + (state.homeTab === 'ot' ? ' active' : ''), onclick: () => setTab('ot') }, '舊約');
@@ -863,11 +986,11 @@ function renderHome() {
       ? [...OT_CATEGORIES, ...NT_CATEGORIES]
       : (state.homeTab === 'ot' ? OT_CATEGORIES : NT_CATEGORIES);
     const q = state.homeSearch.trim();
-    let any = false;
+    let anyBook = false;
     for (const cat of cats) {
       const books = cat.books.filter((b) => !q || b.includes(q));
       if (books.length === 0) continue;
-      any = true;
+      anyBook = true;
       const block = el('div', { class: 'cat-block' });
       block.appendChild(el('div', { class: 'cat-head' },
         el('div', { class: 'cat-tag' }, cat.label),
@@ -884,7 +1007,36 @@ function renderHome() {
       block.appendChild(grid);
       list.appendChild(block);
     }
-    if (!any) {
+
+    // Full-text search results across all chapter commentary.
+    // Min 2 chars to avoid dumping the corpus on single-char queries.
+    if (q.length >= 2) {
+      const hits = searchFullText(q, 80);
+      const head = el('div', { class: 'search-results-head' },
+        el('div', { class: 'search-results-title' }, '全文搜尋結果'),
+        el('div', { class: 'search-results-count' },
+          hits.length === 0 ? '無符合' :
+          (hits.length >= 80 ? '前 80 筆' : '共 ' + hits.length + ' 筆'))
+      );
+      list.appendChild(head);
+      if (hits.length > 0) {
+        const wrap = el('div', { class: 'search-results' });
+        for (const h of hits) {
+          const card = el('button', {
+            class: 'search-result',
+            onclick: () => go({ screen: 'read', book: h.book, chapter: h.chapter }),
+          });
+          card.appendChild(el('div', { class: 'search-result-loc' },
+            h.book,
+            el('span', { class: 'chapter-tag' }, '第 ' + h.chapter + ' 章')
+          ));
+          const snippet = el('div', { class: 'search-result-snippet', html: h.snippet });
+          card.appendChild(snippet);
+          wrap.appendChild(card);
+        }
+        list.appendChild(wrap);
+      }
+    } else if (!anyBook) {
       list.appendChild(el('div', { class: 'empty' }, '找不到符合的書卷。'));
     }
   }
