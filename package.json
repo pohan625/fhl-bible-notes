@@ -1,0 +1,12 @@
+{
+  "name": "fhl-bible-notes",
+  "private": true,
+  "description": "聖經專卷註釋 — offline web app, sourced from bible.fhl.net/api/sc.php",
+  "scripts": {
+    "fetch": "node build/fetch.js",
+    "fetch:force": "node build/fetch.js --force",
+    "extract": "node build/extract.js",
+    "rebuild": "node build/extract.js && node build/build.js && node build/handoff.js",
+    "refresh-and-diff": "node build/refresh.js"
+  }
+}

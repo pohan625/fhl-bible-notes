@@ -31,6 +31,9 @@
 //   - Resume support: if source/sc_api_dump.json already exists, books that
 //     already have a complete `chapters` map are skipped. Re-run the script
 //     after a network blip to pick up where it left off.
+//   - Pass `--force` to ignore the resume-skip and re-fetch every book — use
+//     when refreshing content (sc.php has no Last-Modified header so this is
+//     the only way to pull updates from upstream).
 //   - Markup is preserved verbatim — we do NOT touch `#…|` or `SNG/SNH`.
 
 'use strict';
@@ -243,17 +246,23 @@ function isComplete(payload, expectedChapters) {
 }
 
 async function main() {
+  const force = process.argv.includes('--force');
   const existing = loadExistingDump();
+  // In --force mode we still load the existing file so we can report progress
+  // identically (and write checkpoints to the same path), but we never let
+  // any book short-circuit via the resume check.
   const dump = existing && existing.books
-    ? existing
+    ? (force ? { fetchedAt: new Date().toISOString(), apiSource: API_SOURCE, books: {} } : existing)
     : { fetchedAt: new Date().toISOString(), apiSource: API_SOURCE, books: {} };
+
+  if (force) console.log('--force: re-fetching all books (ignoring existing dump)\n');
 
   let fetched = 0;
   let skipped = 0;
   for (const [name, code, testament, expectedChapters] of BOOKS) {
     const bid = BOOKS.findIndex((b) => b[0] === name) + 1;
     const existingPayload = dump.books[name];
-    if (existingPayload && isComplete(existingPayload, expectedChapters)) {
+    if (!force && existingPayload && isComplete(existingPayload, expectedChapters)) {
       console.log(`✓ ${name} (already complete; ${expectedChapters} chapters)`);
       skipped++;
       continue;
