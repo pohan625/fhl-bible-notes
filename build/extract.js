@@ -1,23 +1,43 @@
-// Extract per-book / per-chapter commentary from source/fhl_bible_offline/index.html
-// Output: build/data.json with shape:
+// Extract per-book / per-chapter commentary from the fetched JSON API dump.
+//
+// Pipeline position:
+//   fetch.js  →  source/sc_api_dump.json  →  *extract.js*  →  build/data.json  →  build.js  →  public/index.html
+//
+// Input: source/sc_api_dump.json (produced by build/fetch.js from bible.fhl.net/api/sc.php)
 //   {
-//     books: [
-//       { name, code, testament, hasIntro, hasAuthor, chapterCount }
-//     ],
+//     books: {
+//       [bookName]: {
+//         bid, engs, testament, chapterCount,
+//         preBook: string,                    // raw text from chap=0,sec=0
+//         chapters: { [chap]: string }        // raw text per chapter
+//       }
+//     }
+//   }
+//
+// Output: build/data.json
+//   {
+//     books: [{ name, code, testament, hasIntro, hasAuthor, chapterCount }],
 //     authorPrefaces: { [bookName]: string | null },
 //     intros: { [bookName]: [{ title: string, body: string }] },
 //     chapters: { [bookName]: { [chapterNum: string]: string } }
 //   }
+//
+// Why this two-stage design: fetch.js does the network-sensitive work and is
+// idempotent; extract.js is pure parsing and reproducible. Re-running extract
+// alone is fast (~1s) so the renderer can be iterated on without re-fetching.
 
 const fs = require('fs');
 const path = require('path');
 
-const HTML = fs.readFileSync(path.join(__dirname, '..', 'source', 'fhl_bible_offline', 'index.html'), 'utf8');
-const m = HTML.match(/const books = (\[[\s\S]*?\]);\s*\n/);
-if (!m) { console.error('books array not found'); process.exit(1); }
-const books = JSON.parse(m[1]);
+const DUMP_PATH = path.join(__dirname, '..', 'source', 'sc_api_dump.json');
+if (!fs.existsSync(DUMP_PATH)) {
+  console.error(`Missing ${DUMP_PATH} — run \`node build/fetch.js\` first.`);
+  process.exit(1);
+}
+const dump = JSON.parse(fs.readFileSync(DUMP_PATH, 'utf8'));
 
-// Source chapter counts (using design defaults for known books, supplemented with the canonical Bible chapter counts).
+// Canonical chapter counts. Used for completeness reporting only — the actual
+// chapter set is whatever the API returned.
 const CHAPTER_COUNTS = {
   '創世記': 50, '出埃及記': 40, '利未記': 27, '民數記': 36, '申命記': 34,
   '約書亞記': 24, '士師記': 21, '路得記': 4, '撒母耳記上': 31, '撒母耳記下': 24,
@@ -36,6 +56,11 @@ const CHAPTER_COUNTS = {
   '希伯來書': 13, '雅各書': 5, '彼得前書': 5, '彼得後書': 3,
   '約翰壹書': 5, '約翰貳書': 1, '約翰參書': 1, '猶大書': 1, '啟示錄': 22
 };
+
+// Normalize line endings: the API returns CRLF, our parsers all assume LF.
+function normalizeLines(s) {
+  return (s || '').replace(/\r\n?/g, '\n');
+}
 
 // Strip author preface comment, unwrapping soft-wrapped lines within paragraphs.
 function extractAuthorPreface(content) {
@@ -132,82 +157,6 @@ function unwrapParagraphs(text) {
   return unwrapped.join('\n\n');
 }
 
-// Locate the index where chapter content begins.
-// Heuristic: the body of every book has a clear structural transition from
-// "intro" (零、 一、 二、 ...) to "chapter content" (typically marked by 壹、 貳、 ...).
-// Strategy:
-//   1. Try to find the first paragraph that begins (top-level) with one of
-//      壹/貳/參/肆/伍/陸/柒/捌/玖/拾 followed by 、 — that's chapter content.
-//   2. Else fall back to: find first paragraph that mentions a verse range
-//      "1:" or "1:1" in its first line where the first line is at indentation 0
-//      and is NOT a section header beginning with 零/一/二/...
-function findChapterStart(text) {
-  const blocks = splitBlocks(text);
-  // Pass 1: look for 壹、/貳、/...
-  for (let i = 0; i < blocks.length; i++) {
-    const first = blocks[i].split('\n')[0];
-    if (/^[壹貳參肆伍陸柒捌玖拾][、，]/.test(first)) {
-      return blocks[i].offsetStart;
-    }
-  }
-  // Pass 2: first paragraph whose first line has a verse-range and looks like a
-  // top-level chapter section header.
-  for (let i = 0; i < blocks.length; i++) {
-    const first = blocks[i].split('\n')[0];
-    if (/(?:^|\s)1:\d/.test(first) && !/^\s/.test(first) && !/^[零一二三四五六七八九十]、/.test(first)) {
-      return blocks[i].offsetStart;
-    }
-  }
-  // Pass 3: first paragraph anywhere that has a 1: reference and is past the intro
-  // markers (零、/一、/二、 at top level).
-  let sawIntro = false;
-  for (let i = 0; i < blocks.length; i++) {
-    const first = blocks[i].split('\n')[0];
-    if (/^[零一二三四五六七八九十]、/.test(first)) {
-      sawIntro = true;
-      continue;
-    }
-    if (sawIntro && /1:\d/.test(blocks[i].body)) return blocks[i].offsetStart;
-  }
-  return -1;
-}
-
-// Split text into paragraph blocks (separated by blank lines), preserving
-// each block's body and starting offset in the original text.
-function splitBlocks(text) {
-  const blocks = [];
-  const re = /([^\n][\s\S]*?)(?=\n\s*\n|\n*$)/g;
-  let prevEnd = 0;
-  // Simpler: split keeping offsets manually.
-  const lines = text.split('\n');
-  let cur = [];
-  let curStart = 0;
-  let pos = 0;
-  for (let i = 0; i <= lines.length; i++) {
-    const line = lines[i];
-    if (line === undefined || line.trim() === '') {
-      if (cur.length > 0) {
-        const body = cur.join('\n');
-        blocks.push({
-          body,
-          offsetStart: curStart,
-          split(sep) { return body.split(sep); },
-        });
-        cur = [];
-      }
-      // advance
-      if (line === undefined) break;
-      pos += line.length + 1;
-      curStart = pos;
-    } else {
-      if (cur.length === 0) curStart = pos;
-      cur.push(line);
-      pos += line.length + 1;
-    }
-  }
-  return blocks;
-}
-
 // Parse intro sections out of pre-chapter text.
 // Sections are detected as paragraphs whose first line at depth 0 starts with
 // a Chinese ordinal "零、|一、|二、|...|☆|* (★)|..." marker. Section bodies
@@ -253,116 +202,21 @@ function parseIntro(introText) {
     .filter((s) => s.title || s.body);
 }
 
-// Parse chapter text into a map { chapter: text }.
-// Strategy: walk paragraphs in order, tracking the "current" chapter and
-// advancing forward when references hint at a later chapter.
-function parseChapters(chapterText, maxChapters) {
-  const blocks = splitBlocks(chapterText);
-  const result = {};
-  let current = 1;
-  const refRe = /(?<![\d])(\d{1,3}):(\d{1,3})/g;
-  // Match "第X篇" and capture the Chinese number (used for Psalms-like format).
-  const cnNumToInt = (cn) => {
-    if (/^\d+$/.test(cn)) return parseInt(cn, 10);
-    const map = { 零: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
-    if (cn.length === 1 && map[cn] !== undefined) return map[cn];
-    if (cn === '十') return 10;
-    if (cn.startsWith('十')) return 10 + cnNumToInt(cn.slice(1));
-    if (cn.endsWith('十')) return cnNumToInt(cn.slice(0, -1)) * 10;
-    if (cn.includes('十')) {
-      const [a, b] = cn.split('十');
-      return cnNumToInt(a) * 10 + cnNumToInt(b);
-    }
-    if (cn.includes('百')) {
-      const [a, b] = cn.split('百');
-      const hundred = (a ? cnNumToInt(a) : 1) * 100;
-      if (!b) return hundred;
-      // "百零N" or "百N十" etc. — treat the rest recursively.
-      return hundred + cnNumToInt(b.replace(/^零/, ''));
-    }
-    return NaN;
-  };
-
-  for (const block of blocks) {
-    const text = block.body;
-    const firstLine = text.split('\n')[0];
-
-    // Pass A: explicit chapter from a section header. A "section header" is the
-    // first line of a paragraph that begins with a structural marker (壹/貳/...
-    // or 一/二/... or （X） or N. or ☆ etc.) AND ends with one of:
-    //   - a chapter:verse range like "X:Y" or "X:Y-A:B"  → use X (the start chapter)
-    //   - "第N篇"  → use N (Psalms format)
-    //   - a bare trailing chapter number like "  20"     → use that
-    let explicit = null;
-    const isSectionHeader =
-      /^[\s　]*[（(][一二三四五六七八九十百\d]+[）)]/.test(firstLine) ||
-      /^[\s　]*[壹貳參肆伍陸柒捌玖拾]、/.test(firstLine) ||
-      /^[\s　]*[一二三四五六七八九十百千]+、/.test(firstLine) ||
-      /^[\s　]*[甲乙丙丁戊己庚辛壬癸]、/.test(firstLine) ||
-      /^[\s　]*\d+\.[^\d:]/.test(firstLine) ||
-      /^[\s　]*[★☆]/.test(firstLine);
-    if (isSectionHeader) {
-      const mPsalm = firstLine.match(/第([零一二三四五六七八九十百\d]+)篇/);
-      if (mPsalm) {
-        const n = cnNumToInt(mPsalm[1]);
-        if (n >= 1 && n <= maxChapters) explicit = n;
-      }
-      if (explicit == null) {
-        // Look for a chapter:verse pattern in the header. Take the FIRST one.
-        const mRange = firstLine.match(/(?<![\d])(\d{1,3}):\d{1,3}/);
-        if (mRange) {
-          const n = parseInt(mRange[1], 10);
-          if (n >= 1 && n <= maxChapters) explicit = n;
-        }
-      }
-      if (explicit == null) {
-        // Trailing bare chapter at end of header line (e.g. "  X、X章  20").
-        const mBare = firstLine.match(/[\s　]+(\d{1,3})\s*$/);
-        if (mBare) {
-          const n = parseInt(mBare[1], 10);
-          if (n >= 1 && n <= maxChapters) explicit = n;
-        }
-      }
-    }
-
-    // Pass B: count chapter:verse refs by chapter.
-    const counts = new Map();
-    refRe.lastIndex = 0;
-    let mt;
-    while ((mt = refRe.exec(text))) {
-      const ch = parseInt(mt[1], 10);
-      if (ch >= 1 && ch <= maxChapters) counts.set(ch, (counts.get(ch) || 0) + 1);
-    }
-
-    // Determine target chapter.
-    //   - Explicit (section header) wins.
-    //   - Otherwise (detail paragraph): use majority-count heuristic with a
-    //     "stay on current if mentioned" preference and a "prefer forward over
-    //     backward" tie-break to handle paragraphs that genuinely advance to
-    //     the next chapter.
-    let target;
-    if (explicit != null) {
-      target = explicit;
-    } else if (counts.size === 0) {
-      target = current;
-    } else {
-      let maxC = 0;
-      for (const v of counts.values()) if (v > maxC) maxC = v;
-      const candidates = [...counts.entries()].filter(([, c]) => c === maxC).map(([k]) => k);
-      if (candidates.includes(current)) {
-        target = current;
-      } else {
-        const fwdCand = candidates.filter((c) => c > current);
-        if (fwdCand.length > 0) target = Math.min(...fwdCand);
-        else target = Math.max(...candidates); // fallback (allows backward)
-      }
-    }
-    current = target;
-
-    if (!result[String(target)]) result[String(target)] = '';
-    result[String(target)] += (result[String(target)] ? '\n\n' : '') + text;
+// Strip the leading book-title line ("創世記研經資料" / "羅馬書" / etc).
+// Returns the body without that line.
+function stripBookTitleLine(rest, bookName) {
+  const restLines = rest.split('\n');
+  let firstNonEmpty = -1;
+  for (let i = 0; i < restLines.length; i++) {
+    if (restLines[i].trim() !== '') { firstNonEmpty = i; break; }
   }
-  return result;
+  if (firstNonEmpty < 0) return rest;
+  const ln = restLines[firstNonEmpty].trim();
+  if (ln.length <= 20 && (ln.includes('研經資料') || ln.includes('查經資料') || ln === bookName)) {
+    restLines.splice(firstNonEmpty, 1);
+    return restLines.join('\n').replace(/^\s+/, '');
+  }
+  return rest;
 }
 
 // === Main ===
@@ -373,70 +227,45 @@ const out = {
   chapters: {},
 };
 
-for (const b of books) {
-  const max = CHAPTER_COUNTS[b.name];
+// Iterate in canonical order (sorted by `bid` from the dump payload).
+const bookEntries = Object.entries(dump.books)
+  .map(([name, payload]) => ({ name, payload }))
+  .sort((a, b) => (a.payload.bid || 0) - (b.payload.bid || 0));
+
+for (const { name, payload } of bookEntries) {
+  const max = CHAPTER_COUNTS[name] || payload.chapterCount;
   if (!max) {
-    console.warn('No chapter count for book:', b.name);
+    console.warn('No chapter count for book:', name);
     continue;
   }
-  const { preface, rest } = extractAuthorPreface(b.content);
 
-  // Strip the leading book-title line ("創世記研經資料" / "羅馬書" / etc).
-  // The first non-empty line of `rest` is the book title — drop it.
-  const restLines = rest.split('\n');
-  let firstNonEmpty = -1;
-  for (let i = 0; i < restLines.length; i++) {
-    if (restLines[i].trim() !== '') { firstNonEmpty = i; break; }
-  }
-  let body = rest;
-  if (firstNonEmpty >= 0) {
-    // If the line is short and matches "<bookname>研經資料|<bookname>查經資料|<bookname>"
-    const ln = restLines[firstNonEmpty].trim();
-    if (ln.length <= 20 && (ln.includes('研經資料') || ln.includes('查經資料') || ln === b.name)) {
-      restLines.splice(firstNonEmpty, 1);
-      body = restLines.join('\n').replace(/^\s+/, '');
-    }
-  }
+  // 1. Pre-book content — author preface + book title line + intros + 參考資料.
+  const preBookRaw = normalizeLines(payload.preBook || '');
+  const { preface, rest } = extractAuthorPreface(preBookRaw);
+  const introBody = stripBookTitleLine(rest, name);
+  const intros = parseIntro(introBody);
+  for (const s of intros) s.body = unwrapBodyText(s.body);
 
-  // Find chapter-content start on the RAW body so intro structure is preserved
-  // line-for-line.
-  const cstart = findChapterStart(body);
-  let introRaw, chapterRaw;
-  if (cstart < 0) {
-    introRaw = '';
-    chapterRaw = body;
-  } else {
-    introRaw = body.slice(0, cstart).replace(/\s+$/, '');
-    chapterRaw = body.slice(cstart);
-  }
-
-  // Unwrap chapter text (merges soft-wraps inside paragraphs).
-  const chapterUnwrapped = unwrapParagraphs(chapterRaw);
-
-  const intro = parseIntro(introRaw);
-  // Unwrap each intro section body separately so soft-wraps are merged but
-  // titles stay intact.
-  for (const s of intro) s.body = unwrapBodyText(s.body);
-
-  const chapters = parseChapters(chapterUnwrapped, max);
-
-  // Sanity: if a single-chapter book ended up with no chapter 1, but had body
-  // text past the intro, just put it all in chapter 1.
-  if (max === 1 && !chapters['1']) {
-    chapters['1'] = chapterText.trim();
+  // 2. Chapter content — already split by chapter via the API's `next` chain
+  //    in fetch.js. We just unwrap soft-wraps within each chapter so the
+  //    template renderer sees clean blank-line-separated paragraphs.
+  const chapters = {};
+  for (const [chapKey, chapText] of Object.entries(payload.chapters || {})) {
+    const normalized = normalizeLines(chapText);
+    chapters[chapKey] = unwrapParagraphs(normalized);
   }
 
   out.books.push({
-    name: b.name,
-    code: b.code,
-    testament: b.testament,
+    name,
+    code: payload.engs || '',
+    testament: payload.testament || '',
     chapterCount: max,
-    hasIntro: intro.length > 0,
+    hasIntro: intros.length > 0,
     hasAuthor: !!preface,
   });
-  out.authorPrefaces[b.name] = preface;
-  out.intros[b.name] = intro;
-  out.chapters[b.name] = chapters;
+  out.authorPrefaces[name] = preface;
+  out.intros[name] = intros;
+  out.chapters[name] = chapters;
 }
 
 const outPath = path.join(__dirname, 'data.json');

@@ -478,6 +478,24 @@ button { font: inherit; color: inherit; cursor: pointer; }
   height: 0.6em;
 }
 
+/* Inline markup styling — see renderInline() in the JS section.
+   .xref      = scripture cross-reference (raw markup #路 3:23-38|).
+                Burgundy accent + nowrap so a reference never breaks across lines.
+   .strong    = Hebrew/Greek Strong number (raw markup SNG05207 / SNH03091).
+                Slightly smaller and muted so they read as inline annotations
+                without competing with the body text. */
+.xref {
+  color: var(--accent);
+  white-space: nowrap;
+}
+.strong {
+  font-size: 0.82em;
+  color: var(--sub);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* ── Persistent bottom chapter nav bar ── */
 .chapter-nav-bar {
   flex-shrink: 0;
@@ -806,6 +824,47 @@ const nb = (text) => {
   );
 };
 
+/* === Inline markup tokenizer ===
+ * The raw API text from bible.fhl.net/api/sc.php embeds two kinds of markup
+ * inline with the body text:
+ *
+ *   #太 19:23-24;可 10:24-25|   →  scripture cross-reference (between # and |)
+ *   SNG05207 / SNH03091          →  Greek/Hebrew Strong number (literal token)
+ *
+ * Render them as styled <span>s rather than stripping the markers. This keeps
+ * the option to make them tappable (jump to passage / open dictionary) later
+ * without re-fetching: the original tokens survive in `data.json`.
+ *
+ * Returns a flat array of strings + DOM nodes that el() will append in order.
+ * Plain text segments still go through nb() so multi-character book
+ * abbreviations + verse ranges stay un-breakable on narrow screens.
+ */
+const INLINE_MARKUP_RE = /#([^|\n]+)\||SN[GH]\d{5}/g;
+const renderInline = (text) => {
+  if (!text) return [];
+  const out = [];
+  let lastIndex = 0;
+  let m;
+  INLINE_MARKUP_RE.lastIndex = 0;
+  while ((m = INLINE_MARKUP_RE.exec(text)) !== null) {
+    if (m.index > lastIndex) {
+      out.push(nb(text.slice(lastIndex, m.index)));
+    }
+    if (m[0].charCodeAt(0) === 35 /* '#' */) {
+      // Cross-reference; m[1] is the captured ref content (no # or |).
+      out.push(el('span', { class: 'xref' }, nb(m[1])));
+    } else {
+      // Strong number — emit verbatim, distinct font.
+      out.push(el('span', { class: 'strong' }, m[0]));
+    }
+    lastIndex = m.index + m[0].length;
+  }
+  if (lastIndex < text.length) {
+    out.push(nb(text.slice(lastIndex)));
+  }
+  return out;
+};
+
 /* === Commentary body renderer ===
  * The source text uses fixed-width whitespace indentation (typically 2 spaces
  * per nesting level) which works on a desktop monitor but eats too much screen
@@ -854,7 +913,7 @@ const renderCommentaryLines = (text) => {
       prev = 'spacer';
       continue;
     }
-    out.push(el('div', { class: 'ln ln-' + cls.kind }, nb(cls.text)));
+    out.push(el('div', { class: 'ln ln-' + cls.kind }, renderInline(cls.text)));
     prev = cls.kind;
   }
   // Trim trailing spacer if any.
@@ -882,7 +941,7 @@ const renderIntroLines = (text) => {
       continue;
     }
     const stripped = raw.replace(/^[\s　]+/, '');
-    out.push(el('div', { class: 'intro-line' }, nb(stripped)));
+    out.push(el('div', { class: 'intro-line' }, renderInline(stripped)));
     prevBlank = false;
   }
   while (out.length && out[out.length - 1].className === 'body-spacer') out.pop();

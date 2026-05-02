@@ -1,34 +1,78 @@
 # 聖經註釋 App — Build Pipeline
 
-This folder turns the source-data file (`fhl_bible_offline/index.html`, ~11 MB
-of literal commentary text from a2z.fhl.net) into a single self-contained
-offline web app.
+This folder turns raw commentary data from the FHL JSON API into a single
+self-contained offline web app.
+
+## Pipeline
+
+```
+            (network)
+fetch.js  ───────────►  source/sc_api_dump.json
+                                 │
+                                 ▼
+                          extract.js  ───►  build/data.json
+                                 │
+                  ┌──────────────┴──────────────┐
+                  ▼                             ▼
+              build.js                       handoff.js
+                  │                             │
+                  ▼                             ▼
+        public/index.html              design/design-handoff.html
+       (offline app, ~10 MB)         (lightweight design build)
+```
 
 ## Files
 
 | File | Role |
 |---|---|
-| `extract.js` | Parses the source HTML, splits each book into author preface / intro / chapter map, and writes `data.json`. |
-| `data.json` | Structured commentary data — 66 books, 1189 chapters, ~9.7 MB. |
+| `fetch.js` | Hits `bible.fhl.net/api/sc.php` (book=3 信望愛站註釋) for all 66 books and writes the raw API dump. ~12 minutes, idempotent / resume-safe. |
+| `extract.js` | Parses `source/sc_api_dump.json`, splits each book into author preface / intros / chapter map, normalises soft-wraps, and writes `data.json`. |
+| `data.json` | Structured commentary data — 66 books, 1189 chapters, ~10 MB. |
 | `template.html` | The app itself: HTML + CSS + JS, with a single `__BIBLE_DATA__` placeholder. |
-| `build.js` | Injects `data.json` into `template.html` → produces `/index.html` (the production offline app). |
-| `handoff.js` | Builds a lightweight `/design-handoff.html` (~170 KB) for re-importing into design tools. |
+| `build.js` | Injects `data.json` into `template.html` → produces `/public/index.html` (the production offline app). |
+| `handoff.js` | Builds a lightweight `/design/design-handoff.html` (~170 KB) for re-importing into design tools. |
 
 ## Build commands
 
 ```bash
-# 1. Re-extract data from the original commentary source. Only needed if you
-#    update fhl_bible_offline/index.html.
+# 1. (Re-)download all commentary text from the FHL API. Takes ~12 minutes.
+#    Re-running is safe — books that are already complete in the existing
+#    sc_api_dump.json are skipped automatically.
+node build/fetch.js
+
+# 2. Re-extract structured data from the dump. Fast (~1 second).
 node build/extract.js
 
-# 2. Produce the full offline app at /index.html (~9.7 MB). This is what end
-#    users open on their phone.
+# 3. Produce the full offline app at /public/index.html (~10 MB). This is what
+#    end users open on their phone.
 node build/build.js
 
-# 3. Produce the lightweight design-handoff build at /design-handoff.html.
+# 4. Produce the lightweight design-handoff build at /design/design-handoff.html.
 #    Use this when iterating on visuals in Claude Design or similar tools.
 node build/handoff.js
 ```
+
+If you only changed `template.html` (UI/CSS) you can skip steps 1 & 2 — just
+re-run `build.js`.
+
+## Why a JSON-API source
+
+Earlier versions of this app derived their data from a snapshot of
+`a2z.fhl.net/php/pcom.php` — the rendered HTML chapter view. That source
+silently destroys structural markup at render time:
+
+- `#路 3:23-38|`  →  `路 3:23-38`        (the `#…|` sentinel is gone)
+- `SNG05207`     →  `SG 5207`             (Strong number split with a literal space)
+
+Switching to `sc.php` (the JSON API) gives us the canonical raw text including
+those markers, so the renderer can:
+
+- Style cross-references distinctly (`.xref`) — and someday make them tappable
+- Style Strong numbers (`.strong`) — and someday link them to the original-language dictionary
+- Detect chapter:verse ranges precisely
+
+The extra parsing work happens at render time inside `template.html`'s
+`renderInline()` — see the comment block there for the tokenizer rules.
 
 ## Round-trip with a design tool
 
@@ -42,8 +86,8 @@ tweaks):
 3. **Bring changes back**: copy the updated HTML/CSS/JS and merge into
    `build/template.html`. **Keep the `__BIBLE_DATA__` placeholder intact** —
    it's how `build.js` knows where to inject the real commentary.
-4. **Repack production**: `node build/build.js` → updated `index.html` with
-   full commentary text.
+4. **Repack production**: `node build/build.js` → updated `public/index.html`
+   with full commentary text.
 
 ## Data injection point
 
@@ -123,6 +167,14 @@ levers for font hierarchy:
 | `.ln-note` | `☆ ★` (special notes) | accent color, 600 |
 | `.ln-body` | uncategorized | regular |
 
+In addition, two **inline** classes are applied within any line by
+`renderInline()`:
+
+| Class | Source marker | Default style |
+|---|---|---|
+| `.xref` | `#路 3:23-38\|` | accent color, no-wrap |
+| `.strong` | `SNG05207` / `SNH03091` | smaller, muted |
+
 The intro page uses a separate, intentionally flat renderer (see
 `renderIntroLines`) — every item is a regular paragraph with the same weight,
 because `（一）（二）` in an intro section is enumeration, not heading
@@ -131,20 +183,29 @@ heading level needed there.
 
 ## Data extraction notes
 
-`extract.js` is the most heuristic part of the pipeline. The corpus is a
-single literal text file with implicit structure (whitespace indentation +
-section markers + verse-range references). Two algorithms worth knowing:
+`extract.js` is the structural parser. The corpus from the API is plain
+commentary text with implicit conventions: whitespace indentation, section
+markers (`壹、`, `一、`, `（一）`, `1.`, `●`/`○`/`◎`/`☆`), and embedded
+references (`#…|`, `SN[GH]\d{5}`). Two things worth knowing:
 
-1. **Chapter assignment** — for each paragraph after the chapter content
-   begins, the parser counts verse references (`\d+:\d+`) and assigns the
-   paragraph to the chapter with the highest reference count, with a
-   "prefer-forward, never-backwards" tie-break to handle cross-references
-   into earlier chapters. Section headers explicitly carrying a verse range
-   (e.g. `（七）建造祭壇 38:1-8`) override the count-based logic.
-2. **Soft-wrap unwrap** — the source uses fixed-width line wrapping; the
-   parser detects continuation lines (lines starting with body characters
-   rather than a structural marker) and merges them back into the parent
-   logical line, so what reaches the renderer is one paragraph per line.
+1. **Section split** — `extract.js` separates each book's `preBook` text into
+   (a) the `/* … */` author preface, (b) the title-line strip, (c) the intro
+   sections (parsed by `parseIntro`), and finally chapters which are taken
+   pre-split from the API. Chapters are no longer reconstructed via
+   verse-count heuristics — `fetch.js` already separates them.
+2. **Soft-wrap unwrap** — the API source uses fixed-width line wrapping;
+   `unwrapParagraphs` and `unwrapBodyText` detect continuation lines (lines
+   starting with body characters rather than a structural marker) and merge
+   them back into the parent logical line so what reaches the renderer is one
+   paragraph per line.
 
-If new books are added to the source or formatting conventions change, this
-is where breakage is most likely to surface.
+### Cross-chapter segments
+
+Some segments span multiple chapters (e.g. `傳道書 5:8 to 6:12`, `約翰福音
+13:31 to 14:31`). The API exposes them as a single record with a multi-chapter
+`title`. `fetch.js` parses the title with a regex (`(\d+)章\d+節 到 (\d+)章\d+節`)
+and stores the same `com_text` under every chapter the segment covers — that's
+how `chapters[6]` of 傳道書 ends up populated even though the API's `next` link
+jumps over it.
+
+If a future re-fetch loses this logic, expect random "empty chapter" pages.
