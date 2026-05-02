@@ -34,11 +34,25 @@ fetch.js  ───────────►  source/sc_api_dump.json
 
 ## Build commands
 
+The fastest way is via the npm scripts (see `package.json`):
+
 ```bash
-# 1. (Re-)download all commentary text from the FHL API. Takes ~12 minutes.
-#    Re-running is safe — books that are already complete in the existing
-#    sc_api_dump.json are skipped automatically.
-node build/fetch.js
+npm run fetch              # pull commentary; resume mode (skips complete books)
+npm run fetch:force        # pull commentary; force-refetch every book
+npm run extract            # parse dump → data.json
+npm run rebuild            # extract → build → handoff (skip fetch)
+npm run refresh-and-diff   # full refresh: backup, force-fetch, diff vs prev, rebuild
+```
+
+Or call the scripts directly:
+
+```bash
+# 1. (Re-)download all commentary text from the FHL API. ~22 minutes for a full
+#    fetch; resumes automatically if interrupted. Pass --force to ignore the
+#    resume check and re-fetch every book (use this when refreshing content —
+#    sc.php has no Last-Modified header so this is the only way to detect
+#    upstream updates).
+node build/fetch.js [--force]
 
 # 2. Re-extract structured data from the dump. Fast (~1 second).
 node build/extract.js
@@ -53,7 +67,26 @@ node build/handoff.js
 ```
 
 If you only changed `template.html` (UI/CSS) you can skip steps 1 & 2 — just
-re-run `build.js`.
+run `npm run rebuild` (or `node build/build.js` if you also want to skip
+handoff).
+
+## Refreshing content from upstream
+
+`sc.php` returns no caching/version headers, so detecting upstream updates
+requires fetching everything and diffing. `npm run refresh-and-diff` automates
+this: it backs up `source/sc_api_dump.json` to `sc_api_dump.prev.json`,
+force-fetches all 66 books (~22 min), prints which books / chapters / prefaces
+changed, and rebuilds `public/index.html`. To revert if a refresh introduces a
+problem:
+
+```bash
+cp source/sc_api_dump.prev.json source/sc_api_dump.json
+npm run rebuild
+```
+
+There's no "smart" mode that pulls only changed content — the API doesn't
+expose enough metadata for that. Suggested cadence: every 6-12 months, or
+when a notable upstream announcement appears.
 
 ## Why a JSON-API source
 
