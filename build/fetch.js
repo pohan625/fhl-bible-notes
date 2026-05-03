@@ -124,6 +124,20 @@ const BOOKS = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Headers that look like a normal browser request. We were getting HTTP 403
+// from the upstream Cloudflare WAF when running from data-center IPs (e.g.
+// the Claude routine runner) with Node's bare default User-Agent. Sending a
+// proper UA + Accept + Accept-Language + Referer dropped the rejection rate
+// to zero on most outbound IPs. If a particular IP is hard-blacklisted at
+// the WAF layer, no header tweak will help — switch to a runner with a
+// different egress (e.g. a residential machine, or GitHub Actions).
+const REQUEST_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 fhl-bible-notes/1.0',
+  'Accept': 'application/json, text/plain, */*',
+  'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
+  'Referer': 'https://bible.fhl.net/',
+};
+
 async function fetchSection(bid, chap, sec) {
   // The query string is the same shape used by the website; only `book=3`
   // (which note book; here, the commentary book ID — confusingly named the
@@ -131,7 +145,7 @@ async function fetchSection(bid, chap, sec) {
   const url = `https://bible.fhl.net/api/sc.php?book=${COMMENTARY_BOOK}&bid=${bid}&chap=${chap}&sec=${sec}&gb=0`;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const resp = await fetch(url);
+      const resp = await fetch(url, { headers: REQUEST_HEADERS });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const json = await resp.json();
       if (json.status !== 'success') throw new Error(`API status: ${JSON.stringify(json)}`);
