@@ -248,6 +248,7 @@ function loadExistingDump() {
 function saveDump(dump) {
   // Pretty-print at 0 indent — file is large, but git-diffable line-by-line
   // wouldn't help anyway since strings are big. Use no-indent JSON.
+  fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
   fs.writeFileSync(OUT_PATH, JSON.stringify(dump));
 }
 
