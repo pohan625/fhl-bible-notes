@@ -79,6 +79,7 @@ ${Object.entries(SAMPLE).map(([b, o]) => `    - ${b} (chapters ${o.chapters.join
 `;
 
 const outPath = path.join(__dirname, '..', 'design', 'design-handoff.html');
+fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, banner + out);
 const sz = fs.statSync(outPath).size;
 console.log('Wrote ' + outPath + ' (' + (sz / 1024).toFixed(1) + ' KB)');
