@@ -8,6 +8,11 @@
 # Behaviour: full force-refetch (~22 min), regenerate public/index.html,
 # and — only if the tracked file changed — open a PR for review. No
 # upstream change → no PR (no empty commits).
+#
+# The previous run's `source/sc_api_dump.json` is restored from the GH
+# Actions cache before running, so refresh.js can produce a meaningful
+# per-book diff. Without this, every run looks like "+66 books added"
+# because the runner is fresh each time.
 
 name: Weekly content refresh
 
@@ -40,6 +45,29 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '20'    # native fetch() is required (Node 18+)
+
+      # Restore the previous run's dump so refresh.js can diff against it.
+      # Rolling-cache pattern: unique key per run (always misses, always
+      # saves at job end) plus a prefix restore-keys that matches the most
+      # recent previous save. GitHub auto-purges old cache entries when the
+      # 10 GB quota fills; sc_api_dump.json is ~12 MB so we have headroom
+      # for hundreds of weekly runs.
+      - name: Restore previous dump from cache
+        id: cache-dump
+        uses: actions/cache@v4
+        with:
+          path: source/sc_api_dump.json
+          key: sc-api-dump-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            sc-api-dump-
+
+      - name: Report cache state
+        run: |
+          if [ -f source/sc_api_dump.json ]; then
+            echo "✓ Previous dump restored ($(stat -c%s source/sc_api_dump.json) bytes)"
+          else
+            echo "ℹ No cached dump found — first run, diff will report '+66 books added' once."
+          fi
 
       - name: Run refresh-and-diff
         id: refresh
