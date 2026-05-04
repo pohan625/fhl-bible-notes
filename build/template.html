@@ -1144,7 +1144,8 @@ function renderHome() {
   requestAnimationFrame(() => { scroller.scrollTop = state.homeScroll; });
   scroller.addEventListener('scroll', () => { state.homeScroll = scroller.scrollTop; });
 
-  screen.appendChild(renderTabBar('home'));
+  // Bottom tab bar (註釋 / 搜尋) hidden until full-text search is improved.
+  // To re-enable: screen.appendChild(renderTabBar('home'));
   return screen;
 }
 
