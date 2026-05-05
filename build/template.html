@@ -729,6 +729,11 @@ svg { display: block; }
 }
 .dev-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
 .dev-email { font-size: 12px; color: var(--accent); font-weight: 500; }
+.dev-note {
+  font-size: 13px; line-height: 1.7;
+  color: var(--text-soft); font-family: 'Noto Serif TC', serif;
+  margin-top: 12px;
+}
 
 .github-pill {
   display: flex; align-items: center; gap: 8px;
@@ -1276,7 +1281,7 @@ function renderAbout() {
   const srcCard = el('div', { class: 'about-card' });
   srcCard.appendChild(el('div', { class: 'about-card-title' }, '信望愛全球資訊網'));
   srcCard.appendChild(el('div', { class: 'about-card-body' },
-    '本 App 的聖經專卷註釋內容，全部來自信望愛全球資訊網（FHL）提供的開放聖經資料庫，至今仍持續不斷更新。感謝多位神學學者及編輯團隊多年的心血付出。'
+    '本網站／App 的聖經專卷註釋內容，全部來自信望愛全球資訊網提供的聖經工具，至今仍持續不斷更新內容，感謝編輯團隊與網站維護者多年的心血付出。並感謝信望愛開放資料的授權，讓本 App 得以實現。'
   ));
   srcCard.appendChild(el('a', {
     class: 'about-card-link',
@@ -1294,7 +1299,7 @@ function renderAbout() {
   donateCard.appendChild(el('button', {
     class: 'donate-btn',
     onclick: () => window.open('https://www.fhl.net/nbg/fhl/fhl6.html', '_blank'),
-  }, '♥ 前往奉獻頁面'));
+  }, '♥ 前往信望愛捐款頁面'));
   scroller.appendChild(section('奉獻支持', donateCard));
 
   // 開發者
@@ -1306,6 +1311,7 @@ function renderAbout() {
   devInfo.appendChild(el('div', { class: 'dev-email' }, 'pohan625@gmail.com'));
   devRow.appendChild(devInfo);
   devCard.appendChild(devRow);
+  devCard.appendChild(el('div', { class: 'dev-note' }, '若有任何建議，歡迎來信。'));
 
   const ghPill = el('button', {
     class: 'github-pill',
@@ -1326,8 +1332,6 @@ function renderAbout() {
   ghPill.appendChild(chevR);
   devCard.appendChild(ghPill);
   scroller.appendChild(section('開發者', devCard));
-
-  scroller.appendChild(el('div', { class: 'version-tag' }, '版本 1.0　·　2025'));
 
   screen.appendChild(scroller);
   return screen;
