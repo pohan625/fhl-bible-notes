@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FHL Bible Notes icon">
+  <defs>
+    <linearGradient id="bg" x1="96" y1="64" x2="416" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF7E8"/>
+      <stop offset="1" stop-color="#F4E8D1"/>
+    </linearGradient>
+    <linearGradient id="book" x1="142" y1="150" x2="370" y2="366" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#355C4A"/>
+      <stop offset="1" stop-color="#244638"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#bg)"/>
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="none" stroke="#E2CDA9" stroke-width="12"/>
+
+  <path d="M142 164c42-18 79-16 114 6v210c-35-22-72-24-114-6V164Z" fill="url(#book)"/>
+  <path d="M370 164c-42-18-79-16-114 6v210c35-22 72-24 114-6V164Z" fill="url(#book)"/>
+  <path d="M256 170v210" stroke="#FFF7E8" stroke-width="10" stroke-linecap="round"/>
+  <path d="M170 209c22-7 43-6 62 3M170 250c22-7 43-6 62 3M170 291c22-7 43-6 62 3" stroke="#FFF7E8" stroke-width="12" stroke-linecap="round" opacity=".85"/>
+  <path d="M342 209c-22-7-43-6-62 3M342 250c-22-7-43-6-62 3M342 291c-22-7-43-6-62 3" stroke="#FFF7E8" stroke-width="12" stroke-linecap="round" opacity=".85"/>
+
+  <path d="M322 130h58c10 0 18 8 18 18v104l-47-28-47 28V148c0-10 8-18 18-18Z" fill="#C7654B"/>
+  <path d="M351 157v55" stroke="#FFF7E8" stroke-width="12" stroke-linecap="round"/>
+  <path d="M328 184h46" stroke="#FFF7E8" stroke-width="12" stroke-linecap="round"/>
+</svg>
