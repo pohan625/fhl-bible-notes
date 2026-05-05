@@ -179,7 +179,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   margin-bottom: 10px;
 }
 .cat-tag {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--accent);
   background: var(--accent-light);
@@ -292,7 +292,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   margin-bottom: 10px;
 }
 .intro-section-tag {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--accent);
   background: var(--accent-light);
@@ -565,7 +565,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   margin: 6px 2px 4px;
 }
 .search-results-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 1px;
@@ -671,6 +671,102 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* SVG icons inherit currentColor */
 svg { display: block; }
+
+/* ── About / 資料來源頁 ── */
+.about-section { margin-bottom: 20px; }
+.about-section-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+}
+.about-section-tag {
+  font-size: 15px; font-weight: 700;
+  color: var(--accent); background: var(--accent-light);
+  padding: 3px 10px; border-radius: 20px;
+  letter-spacing: 1px; white-space: nowrap;
+}
+.about-section-rule { flex: 1; height: 1px; background: var(--divider); }
+
+.about-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.about-card + .about-card { margin-top: 10px; }
+.about-card-title {
+  font-size: 16px; font-weight: 700;
+  color: var(--text); font-family: 'Noto Serif TC', serif;
+  margin-bottom: 6px;
+}
+.about-card-body {
+  font-size: 15px; line-height: 1.8;
+  color: var(--text-soft); font-family: 'Noto Serif TC', serif;
+}
+.about-card-link {
+  font-size: 14px; color: var(--accent); font-weight: 600;
+  text-decoration: none; display: inline-flex;
+  align-items: center; gap: 4px;
+  margin-bottom: 10px;
+}
+.donate-btn {
+  width: 100%; background: var(--accent); color: white;
+  border: none; border-radius: 12px; padding: 14px 16px;
+  font-size: 15px; font-weight: 700; font: inherit;
+  cursor: pointer; display: flex; align-items: center;
+  justify-content: center; gap: 6px;
+  letter-spacing: 0.5px; margin-top: 10px;
+  transition: background 0.15s;
+}
+.donate-btn:active { background: var(--accent-strong); }
+
+.dev-row { display: flex; align-items: center; gap: 12px; }
+.dev-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--accent-light); color: var(--accent);
+  font-size: 18px; font-weight: 700;
+  font-family: 'Noto Serif TC', serif;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.dev-name { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.dev-email { font-size: 14px; color: var(--accent); font-weight: 500; }
+.dev-note {
+  font-size: 15px; line-height: 1.8;
+  color: var(--text-soft); font-family: 'Noto Serif TC', serif;
+  margin-top: 12px;
+}
+
+.github-pill {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--tab-bg); border-radius: 12px;
+  padding: 10px 14px; margin-top: 10px;
+  cursor: pointer; border: none; width: 100%;
+  font-family: inherit; text-align: left;
+  transition: background 0.12s;
+}
+.github-pill:active { background: rgba(0,0,0,0.10); }
+.github-pill-label { flex: 1; }
+.github-pill-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.github-pill-sub { font-size: 13px; color: var(--sub); margin-top: 1px; }
+
+.version-tag {
+  text-align: center; font-size: 12px;
+  color: var(--sub); margin-top: 8px;
+  padding-bottom: 4px; font-family: 'Noto Sans TC', sans-serif;
+}
+
+/* About 入口：首頁標題列右側 */
+.home-title-row {
+  display: flex; align-items: baseline;
+  justify-content: space-between;
+}
+.about-entry-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--accent); font-size: 14px; font-weight: 600;
+  font-family: inherit; padding: 4px 0 4px 8px;
+  letter-spacing: 0.3px; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
 
 /* Wider screens: keep iPhone-ish max width and add a subtle frame */
 @media (min-width: 600px) {
@@ -786,6 +882,7 @@ function readRoute() {
   if (!h) return { screen: 'home' };
   const parts = h.split('/').map(decodeURIComponent);
   if (parts[0] === 'search') return { screen: 'search' };
+  if (parts[0] === 'about') return { screen: 'about' };
   if (parts[0] === 'book' && parts[1]) return { screen: 'book', book: parts[1] };
   if (parts[0] === 'intro' && parts[1]) return { screen: 'intro', book: parts[1], view: parts[2] || 'background' };
   if (parts[0] === 'read' && parts[1] && parts[2]) return { screen: 'read', book: parts[1], chapter: parseInt(parts[2], 10) };
@@ -794,6 +891,7 @@ function readRoute() {
 function go(route) {
   let h = '';
   if (route.screen === 'search') h = 'search';
+  else if (route.screen === 'about') h = 'about';
   else if (route.screen === 'book') h = 'book/' + encodeURIComponent(route.book);
   else if (route.screen === 'intro') h = 'intro/' + encodeURIComponent(route.book) + '/' + (route.view || 'background');
   else if (route.screen === 'read') h = 'read/' + encodeURIComponent(route.book) + '/' + route.chapter;
@@ -1063,9 +1161,13 @@ function renderHome() {
 
   // Header
   const header = el('div', { class: 'header' });
-  header.appendChild(el('div', { class: 'title-block' },
-    el('div', { class: 'h1' }, '信望愛聖經註釋')
-  ));
+  const titleRow = el('div', { class: 'home-title-row' });
+  titleRow.appendChild(el('div', { class: 'h1' }, '信望愛聖經註釋'));
+  titleRow.appendChild(el('button', {
+    class: 'about-entry-btn',
+    onclick: () => go({ screen: 'about' }),
+  }, '關於'));
+  header.appendChild(el('div', { class: 'title-block' }, titleRow));
 
   // Search (book names only — full-text search lives in the dedicated 搜尋 tab)
   const searchInput = el('input', {
@@ -1146,6 +1248,93 @@ function renderHome() {
 
   // Bottom tab bar (註釋 / 搜尋) hidden until full-text search is improved.
   // To re-enable: screen.appendChild(renderTabBar('home'));
+  return screen;
+}
+
+function renderAbout() {
+  const screen = el('div', { class: 'screen' });
+
+  const header = el('div', {
+    class: 'header',
+    style: { borderBottom: '1px solid var(--divider)', paddingBottom: '14px' },
+  });
+  const back = el('button', { class: 'back-btn', onclick: () => go({ screen: 'home' }) });
+  back.appendChild(icon('chevronLeft'));
+  back.appendChild(document.createTextNode('返回'));
+  header.appendChild(back);
+  header.appendChild(el('div', { class: 'h1' }, '關於'));
+  header.appendChild(el('div', { class: 'accent-rule' }));
+  screen.appendChild(header);
+
+  const scroller = el('div', { class: 'scroller', style: { padding: '20px 20px 24px' } });
+
+  function section(tag, ...cards) {
+    const sec = el('div', { class: 'about-section' });
+    const head = el('div', { class: 'about-section-head' });
+    head.appendChild(el('div', { class: 'about-section-tag' }, tag));
+    head.appendChild(el('div', { class: 'about-section-rule' }));
+    sec.appendChild(head);
+    for (const c of cards) sec.appendChild(c);
+    return sec;
+  }
+
+  // 資料來源
+  const srcCard = el('div', { class: 'about-card' });
+  srcCard.appendChild(el('div', { class: 'about-card-title' }, '信望愛信仰與聖經資源中心'));
+  srcCard.appendChild(el('a', {
+    class: 'about-card-link',
+    href: 'https://bible.fhl.net/index.html',
+    target: '_blank',
+    rel: 'noopener noreferrer',
+  }, 'bible.fhl.net ↗'));
+  srcCard.appendChild(el('div', { class: 'about-card-body' },
+    '本網站／App 的聖經專卷註釋內容，全部來自信望愛全球資訊網提供的聖經工具，至今仍持續不斷更新內容，感謝編輯團隊與網站維護者多年的心血付出。並感謝信望愛開放資料的授權，讓本網站／App 得以實現。'
+  ));
+  scroller.appendChild(section('資料來源', srcCard));
+
+  // 奉獻支持
+  const donateCard = el('div', { class: 'about-card' });
+  donateCard.appendChild(el('div', { class: 'about-card-body' },
+    '信望愛的資料免費提供給所有人使用，若您得到幫助，歡迎奉獻支持，讓這份工作得以持續。'
+  ));
+  donateCard.appendChild(el('button', {
+    class: 'donate-btn',
+    onclick: () => window.open('https://www.fhl.net/nbg/fhl/fhl6.html', '_blank'),
+  }, '♥ 前往信望愛捐款頁面'));
+  scroller.appendChild(section('奉獻支持', donateCard));
+
+  // 開發者
+  const devCard = el('div', { class: 'about-card' });
+  const devRow = el('div', { class: 'dev-row' });
+  devRow.appendChild(el('div', { class: 'dev-avatar' }, 'P'));
+  const devInfo = el('div', { class: 'dev-info' });
+  devInfo.appendChild(el('div', { class: 'dev-name' }, 'Po-Han Huang'));
+  devInfo.appendChild(el('div', { class: 'dev-email' }, 'pohan625@gmail.com'));
+  devRow.appendChild(devInfo);
+  devCard.appendChild(devRow);
+  devCard.appendChild(el('div', { class: 'dev-note' }, '若有任何建議，歡迎來信。'));
+
+  const ghPill = el('button', {
+    class: 'github-pill',
+    onclick: () => window.open('https://github.com/pohan625/fhl-bible-notes', '_blank'),
+  });
+  const ghIcon = document.createElement('span');
+  ghIcon.style.display = 'inline-flex';
+  ghIcon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>';
+  ghPill.appendChild(ghIcon);
+  const ghLabel = el('div', { class: 'github-pill-label' });
+  ghLabel.appendChild(el('div', { class: 'github-pill-title' }, '原始碼完全開源'));
+  ghLabel.appendChild(el('div', { class: 'github-pill-sub' }, 'github.com/pohan625/fhl-bible-notes'));
+  ghPill.appendChild(ghLabel);
+  const chevR = document.createElement('span');
+  chevR.style.display = 'inline-flex';
+  chevR.style.color = 'var(--sub)';
+  chevR.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  ghPill.appendChild(chevR);
+  devCard.appendChild(ghPill);
+  scroller.appendChild(section('開發者', devCard));
+
+  screen.appendChild(scroller);
   return screen;
 }
 
@@ -1500,6 +1689,7 @@ function render() {
   root.innerHTML = '';
   let screen;
   if (route.screen === 'search') screen = renderSearch();
+  else if (route.screen === 'about') screen = renderAbout();
   else if (route.screen === 'book') screen = renderBook(route.book);
   else if (route.screen === 'intro') screen = renderIntro(route.book, route.view);
   else if (route.screen === 'read') screen = renderRead(route.book, route.chapter);
