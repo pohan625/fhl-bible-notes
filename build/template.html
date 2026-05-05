@@ -898,11 +898,19 @@ function searchFullText(query, limit) {
   return hits;
 }
 
-/* === Routing via hash === */
+/* === Routing via History API ===
+ * Old hash links (e.g. /#book/創世記) are migrated to /book/創世記 on load so
+ * shared/bookmarked URLs keep working. Requires SPA fallback on the host
+ * (Cloudflare Pages: public/_redirects).
+ */
+if (location.hash && location.hash.length > 1) {
+  const legacy = location.hash.slice(1);
+  history.replaceState({}, '', '/' + legacy + location.search);
+}
 function readRoute() {
-  const h = location.hash.replace(/^#/, '');
-  if (!h) return { screen: 'home' };
-  const parts = h.split('/').map(decodeURIComponent);
+  const path = location.pathname.replace(/^\/+|\/+$/g, '');
+  if (!path) return { screen: 'home' };
+  const parts = path.split('/').map(decodeURIComponent);
   if (parts[0] === 'search') return { screen: 'search' };
   if (parts[0] === 'about') return { screen: 'about' };
   if (parts[0] === 'book' && parts[1]) return { screen: 'book', book: parts[1] };
@@ -910,14 +918,26 @@ function readRoute() {
   if (parts[0] === 'read' && parts[1] && parts[2]) return { screen: 'read', book: parts[1], chapter: parseInt(parts[2], 10) };
   return { screen: 'home' };
 }
+function buildPath(route) {
+  if (route.screen === 'search') return '/search';
+  if (route.screen === 'about') return '/about';
+  if (route.screen === 'book') return '/book/' + encodeURIComponent(route.book);
+  if (route.screen === 'intro') return '/intro/' + encodeURIComponent(route.book) + '/' + (route.view || 'background');
+  if (route.screen === 'read') return '/read/' + encodeURIComponent(route.book) + '/' + route.chapter;
+  return '/';
+}
+function trackPageview() {
+  if (window.dataLayer) {
+    window.dataLayer.push({ event: 'spa_pageview', page_path: location.pathname, page_title: document.title });
+  }
+}
 function go(route) {
-  let h = '';
-  if (route.screen === 'search') h = 'search';
-  else if (route.screen === 'about') h = 'about';
-  else if (route.screen === 'book') h = 'book/' + encodeURIComponent(route.book);
-  else if (route.screen === 'intro') h = 'intro/' + encodeURIComponent(route.book) + '/' + (route.view || 'background');
-  else if (route.screen === 'read') h = 'read/' + encodeURIComponent(route.book) + '/' + route.chapter;
-  if (location.hash.replace(/^#/, '') !== h) location.hash = h;
+  const path = buildPath(route);
+  if (location.pathname !== path) {
+    history.pushState({}, '', path);
+    render();
+    trackPageview();
+  }
 }
 
 /* === State === */
@@ -1720,7 +1740,7 @@ function render() {
   window.scrollTo(0, 0);
 }
 
-window.addEventListener('hashchange', render);
+window.addEventListener('popstate', () => { render(); trackPageview(); });
 render();
 </script>
 
