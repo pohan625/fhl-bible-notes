@@ -54,7 +54,7 @@ jobs:
       # for hundreds of weekly runs.
       - name: Restore previous dump from cache
         id: cache-dump
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: source/sc_api_dump.json
           key: sc-api-dump-${{ github.run_id }}-${{ github.run_attempt }}
