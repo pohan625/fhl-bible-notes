@@ -1,12 +1,17 @@
-<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FHL Bible Notes favicon">
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FHL Bible Notes app icon">
   <defs>
+    <linearGradient id="bg" x1="96" y1="64" x2="416" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF7E8"/>
+      <stop offset="1" stop-color="#F4E8D1"/>
+    </linearGradient>
     <linearGradient id="book" x1="116" y1="122" x2="396" y2="394" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#355C4A"/>
       <stop offset="1" stop-color="#244638"/>
     </linearGradient>
   </defs>
 
-  <!-- Open Bible, enlarged for tiny browser tab display -->
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#bg)"/>
+
   <path d="M104 142c56-25 106-22 152 8v268c-46-30-96-33-152-8V142Z" fill="url(#book)"/>
   <path d="M408 142c-56-25-106-22-152 8v268c46-30 96-33 152-8V142Z" fill="url(#book)"/>
   <path d="M256 150v268" stroke="#FFF7E8" stroke-width="14" stroke-linecap="round"/>
@@ -14,6 +19,5 @@
   <path d="M142 205c30-10 58-9 84 4M142 256c30-10 58-9 84 4M142 307c30-10 58-9 84 4" stroke="#FFF7E8" stroke-width="16" stroke-linecap="round" opacity=".9"/>
   <path d="M370 205c-30-10-58-9-84 4M370 256c-30-10-58-9-84 4M370 307c-30-10-58-9-84 4" stroke="#FFF7E8" stroke-width="16" stroke-linecap="round" opacity=".9"/>
 
-  <!-- Bookmark / commentary marker -->
   <path d="M322 100h72c12 0 22 10 22 22v142l-58-35-58 35V122c0-12 10-22 22-22Z" fill="#7B2D3E"/>
 </svg>
