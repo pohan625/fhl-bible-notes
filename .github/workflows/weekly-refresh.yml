@@ -71,6 +71,10 @@ jobs:
 
       - name: Run refresh-and-diff
         id: refresh
+        env:
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_PROJECT_API_KEY: ${{ secrets.POSTHOG_PROJECT_API_KEY }}
+          POSTHOG_HOST: ${{ vars.POSTHOG_HOST || 'https://us.i.posthog.com' }}
         run: |
           # Tee output so we can extract the diff summary later.
           set -o pipefail

@@ -24,6 +24,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- Umami -->
 <script defer src="https://cloud.umami.is/script.js" data-website-id="e0206ccb-506a-4da6-9718-b81de2de26e8"></script>
 
+__POSTHOG_SNIPPET__
 
 <style>
 :root {
@@ -930,6 +931,7 @@ function trackPageview() {
   if (window.dataLayer) {
     window.dataLayer.push({ event: 'spa_pageview', page_path: location.pathname, page_title: document.title });
   }
+  captureEvent('$pageview', routeTrackingProperties(readRoute()));
 }
 function go(route) {
   const path = buildPath(route);
@@ -947,9 +949,44 @@ const state = {
   homeScroll: 0,
   fullSearchQuery: '',
   fullSearchScroll: 0,
+  lastSearchTracked: '',
   fontSize: parseInt(localStorage.getItem('reading-font') || '17', 10),
   showFontControls: false,
 };
+
+function captureEvent(name, properties) {
+  try {
+    if (window.posthog && typeof window.posthog.capture === 'function') {
+      window.posthog.capture(name, properties || {});
+    }
+  } catch (_err) {
+    // Analytics must never interrupt reading.
+  }
+}
+
+function routeTrackingProperties(route) {
+  const props = {
+    path: location.pathname,
+    screen: route.screen,
+  };
+  if (route.book) {
+    const meta = BOOK_INDEX[route.book];
+    props.book = route.book;
+    if (meta) props.testament = meta.testament;
+  }
+  if (route.chapter) props.chapter = route.chapter;
+  if (route.view) props.view = route.view;
+  return props;
+}
+
+function bookTrackingProperties(book, extra) {
+  const meta = BOOK_INDEX[book];
+  return Object.assign({
+    book,
+    testament: meta ? meta.testament : undefined,
+    chapter_count: meta ? meta.chapterCount : undefined,
+  }, extra || {});
+}
 
 /* === Text transforms ===
  * `nb()` keeps scripture references (CJK book abbreviation + space + verse range)
@@ -1109,10 +1146,12 @@ function buildFontToolbar(bodies) {
   const valSpan = el('span', { style: { color: 'var(--text)' } }, String(state.fontSize));
   const apply = (v) => {
     v = Math.max(14, Math.min(24, v));
+    const changed = v !== state.fontSize;
     state.fontSize = v;
     localStorage.setItem('reading-font', String(v));
     valSpan.textContent = String(v);
     for (const b of bodies) if (b) b.style.fontSize = v + 'px';
+    if (changed) captureEvent('reading_font_size_changed', { font_size: v });
   };
   const minus = el('button', { onclick: () => apply(state.fontSize - 1) }, '-');
   const plus = el('button', { onclick: () => apply(state.fontSize + 1) }, '+');
@@ -1188,7 +1227,12 @@ function renderTabBar(active) {
   for (const t of tabs) {
     const btn = el('button', {
       class: 'tab-bar-btn' + (t.key === active ? ' active' : ''),
-      onclick: () => { if (t.key !== active) go(t.target); },
+      onclick: () => {
+        if (t.key !== active) {
+          captureEvent('bottom_tab_selected', { tab: t.key });
+          go(t.target);
+        }
+      },
     });
     btn.appendChild(icon(t.icon));
     btn.appendChild(el('div', null, t.label));
@@ -1207,7 +1251,10 @@ function renderHome() {
   titleRow.appendChild(el('div', { class: 'h1' }, '信望愛聖經註釋'));
   titleRow.appendChild(el('button', {
     class: 'about-entry-btn',
-    onclick: () => go({ screen: 'about' }),
+    onclick: () => {
+      captureEvent('about_opened', { source: 'home_header' });
+      go({ screen: 'about' });
+    },
   }, '關於'));
   header.appendChild(el('div', { class: 'title-block' }, titleRow));
 
@@ -1271,7 +1318,12 @@ function renderHome() {
       for (const book of books) {
         grid.appendChild(el('button', {
           class: 'book-card',
-          onclick: () => go({ screen: 'book', book }),
+          onclick: () => {
+            captureEvent('bible_book_selected', bookTrackingProperties(book, {
+              source: state.homeSearch ? 'home_search' : 'book_list',
+            }));
+            go({ screen: 'book', book });
+          },
         }, book));
       }
       block.appendChild(grid);
@@ -1341,7 +1393,10 @@ function renderAbout() {
   ));
   donateCard.appendChild(el('button', {
     class: 'donate-btn',
-    onclick: () => window.open('https://www.fhl.net/nbg/fhl/fhl6.html', '_blank'),
+    onclick: () => {
+      captureEvent('external_link_opened', { link: 'fhl_donation', source: 'about' });
+      window.open('https://www.fhl.net/nbg/fhl/fhl6.html', '_blank');
+    },
   }, '♥ 前往信望愛捐款頁面'));
   scroller.appendChild(section('奉獻支持', donateCard));
 
@@ -1358,7 +1413,10 @@ function renderAbout() {
 
   const ghPill = el('button', {
     class: 'github-pill',
-    onclick: () => window.open('https://github.com/pohan625/fhl-bible-notes', '_blank'),
+    onclick: () => {
+      captureEvent('external_link_opened', { link: 'github_repository', source: 'about' });
+      window.open('https://github.com/pohan625/fhl-bible-notes', '_blank');
+    },
   });
   const ghIcon = document.createElement('span');
   ghIcon.style.display = 'inline-flex';
@@ -1441,6 +1499,15 @@ function renderSearch() {
       return;
     }
     const hits = searchFullText(q, 200);
+    const searchKey = q + ':' + hits.length;
+    if (state.lastSearchTracked !== searchKey) {
+      state.lastSearchTracked = searchKey;
+      captureEvent('full_text_search_performed', {
+        query_length: q.length,
+        result_count: hits.length,
+        result_limit_reached: hits.length >= 200,
+      });
+    }
     const head = el('div', { class: 'search-results-head' },
       el('div', { class: 'search-results-title' }, '搜尋結果'),
       el('div', { class: 'search-results-count' },
@@ -1453,7 +1520,13 @@ function renderSearch() {
     for (const h of hits) {
       const card = el('button', {
         class: 'search-result',
-        onclick: () => go({ screen: 'read', book: h.book, chapter: h.chapter }),
+        onclick: () => {
+          captureEvent('commentary_chapter_opened', bookTrackingProperties(h.book, {
+            chapter: h.chapter,
+            source: 'full_text_search_result',
+          }));
+          go({ screen: 'read', book: h.book, chapter: h.chapter });
+        },
       });
       card.appendChild(el('div', { class: 'search-result-loc' },
         h.book,
@@ -1506,7 +1579,13 @@ function renderBook(book) {
     if (preface) {
       const card = el('button', {
         class: 'intro-card',
-        onclick: () => go({ screen: 'intro', book, view: 'author' }),
+        onclick: () => {
+          captureEvent('book_intro_opened', bookTrackingProperties(book, {
+            view: 'author',
+            source: 'book_screen',
+          }));
+          go({ screen: 'intro', book, view: 'author' });
+        },
       });
       const ic = el('div', { class: 'intro-card-icon' });
       ic.appendChild(icon('person'));
@@ -1523,7 +1602,13 @@ function renderBook(book) {
     if (hasIntro) {
       const card = el('button', {
         class: 'intro-card',
-        onclick: () => go({ screen: 'intro', book, view: 'background' }),
+        onclick: () => {
+          captureEvent('book_intro_opened', bookTrackingProperties(book, {
+            view: 'background',
+            source: 'book_screen',
+          }));
+          go({ screen: 'intro', book, view: 'background' });
+        },
       });
       const ic = el('div', { class: 'intro-card-icon solid' });
       ic.appendChild(icon('notes'));
@@ -1545,7 +1630,13 @@ function renderBook(book) {
   for (let i = 1; i <= meta.chapterCount; i++) {
     grid.appendChild(el('button', {
       class: 'chapter-card',
-      onclick: () => go({ screen: 'read', book, chapter: i }),
+      onclick: () => {
+        captureEvent('commentary_chapter_opened', bookTrackingProperties(book, {
+          chapter: i,
+          source: 'chapter_grid',
+        }));
+        go({ screen: 'read', book, chapter: i });
+      },
     }, String(i)));
   }
   scroller.appendChild(grid);
@@ -1698,7 +1789,13 @@ function renderRead(book, chapter) {
     class: 'nav-btn',
     title: '上一章',
     disabled: chapter <= 1 || undefined,
-    onclick: () => go({ screen: 'read', book, chapter: chapter - 1 }),
+    onclick: () => {
+      captureEvent('commentary_chapter_opened', bookTrackingProperties(book, {
+        chapter: chapter - 1,
+        source: 'chapter_nav_previous',
+      }));
+      go({ screen: 'read', book, chapter: chapter - 1 });
+    },
   });
   prevBtn.innerHTML = chevL;
 
@@ -1706,7 +1803,13 @@ function renderRead(book, chapter) {
     class: 'nav-btn',
     title: '下一章',
     disabled: chapter >= meta.chapterCount || undefined,
-    onclick: () => go({ screen: 'read', book, chapter: chapter + 1 }),
+    onclick: () => {
+      captureEvent('commentary_chapter_opened', bookTrackingProperties(book, {
+        chapter: chapter + 1,
+        source: 'chapter_nav_next',
+      }));
+      go({ screen: 'read', book, chapter: chapter + 1 });
+    },
   });
   nextBtn.innerHTML = chevR;
 
@@ -1742,6 +1845,7 @@ function render() {
 
 window.addEventListener('popstate', () => { render(); trackPageview(); });
 render();
+trackPageview();
 </script>
 
 
