@@ -30,6 +30,7 @@ const template = fs.readFileSync(path.join(__dirname, 'template.html'), 'utf8');
 
 // Trim the data to the sample.
 const trimmed = {
+  sourceUpdatedAt: fullData.sourceUpdatedAt || null,
   books: fullData.books, // full list — needed for the home grid
   authorPrefaces: {},
   intros: {},
