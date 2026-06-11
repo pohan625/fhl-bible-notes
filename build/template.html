@@ -300,6 +300,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
   transition: transform 0.12s ease;
 }
 .chapter-card:active { transform: scale(0.95); }
+.home-updated-at {
+  margin: 22px 2px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--divider);
+  color: var(--sub);
+  font-size: 13px;
+  text-align: center;
+  letter-spacing: 0.2px;
+}
 
 /* ── Intro detail ── */
 .intro-section { margin-bottom: 28px; }
@@ -849,6 +858,8 @@ const NT_CATEGORIES = [
 const BOOK_INDEX = {};
 for (const b of DATA.books) BOOK_INDEX[b.name] = b;
 
+const LAST_UPDATED_DATE = '2026/6/11';
+
 /* === Full-text search ===
  * Plain `String.indexOf` scan over every chapter's commentary text. The whole
  * corpus is ~10 MB of CJK text in memory; a linear pass takes ~50–150 ms on a
@@ -1331,6 +1342,8 @@ function renderHome() {
     }
     if (!any) {
       list.appendChild(el('div', { class: 'empty' }, '找不到符合的書卷。'));
+    } else {
+      list.appendChild(el('div', { class: 'home-updated-at' }, '最後更新：' + LAST_UPDATED_DATE));
     }
   }
 

@@ -16,6 +16,7 @@
 //
 // Output: build/data.json
 //   {
+//     sourceUpdatedAt: string | null,
 //     books: [{ name, code, testament, hasIntro, hasAuthor, chapterCount }],
 //     authorPrefaces: { [bookName]: string | null },
 //     intros: { [bookName]: [{ title: string, body: string }] },
@@ -221,6 +222,7 @@ function stripBookTitleLine(rest, bookName) {
 
 // === Main ===
 const out = {
+  sourceUpdatedAt: dump.fetchedAt || null,
   books: [],
   authorPrefaces: {},
   intros: {},
