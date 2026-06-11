@@ -94,13 +94,30 @@ jobs:
             git status --short
           fi
 
+      - name: Update displayed last updated date
+        if: steps.detect.outputs.changed == 'true'
+        id: update-date
+        env:
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_PROJECT_API_KEY: ${{ secrets.POSTHOG_PROJECT_API_KEY }}
+          POSTHOG_HOST: ${{ vars.POSTHOG_HOST || 'https://us.i.posthog.com' }}
+        run: |
+          set -euo pipefail
+          DISPLAY_DATE=$(TZ=Asia/Taipei date +%-Y/%-m/%-d)
+          echo "display_date=${DISPLAY_DATE}" >> "$GITHUB_OUTPUT"
+
+          node build/update-last-updated-date.js "$DISPLAY_DATE"
+          node build/build.js
+          EXPECTED_LAST_UPDATED_DATE="$DISPLAY_DATE" node build/verify-last-updated.js
+
       - name: Open PR with refreshed content
         if: steps.detect.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          DATE=$(date -u +%Y-%m-%d)
+          DATE=$(TZ=Asia/Taipei date +%Y-%m-%d)
+          DISPLAY_DATE="${{ steps.update-date.outputs.display_date }}"
           BRANCH="weekly-refresh-${DATE}"
 
           # Extract the diff summary block from the refresh.js output —
@@ -113,7 +130,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add public/index.html
+          git add build/template.html public/index.html
           git commit -m "Weekly content refresh: ${DATE}
 
           ${DIFF_BLOCK}
@@ -136,8 +153,9 @@ jobs:
 
           ## Notes
 
-          - Triggered by the \`weekly-refresh.yml\` workflow on \`${DATE}\`.
-          - Source dump (\`source/sc_api_dump.json\`) is gitignored; only the rebuilt \`public/index.html\` is committed.
+          - Triggered by the \`weekly-refresh.yml\` workflow on \`${DATE}\` (Asia/Taipei).
+          - Displayed last updated date is \`${DISPLAY_DATE}\`.
+          - Source dump (\`source/sc_api_dump.json\`) is gitignored; the rebuilt \`public/index.html\` and display-date source in \`build/template.html\` are committed.
           - If something looks off after merging, revert the merge commit — the previous \`public/index.html\` will come back unchanged.
           EOF
           )"

@@ -7,6 +7,7 @@
     "fetch:force": "node build/fetch.js --force",
     "extract": "node build/extract.js",
     "rebuild": "node build/extract.js && node build/build.js && node build/handoff.js",
-    "refresh-and-diff": "node build/refresh.js"
+    "refresh-and-diff": "node build/refresh.js",
+    "test:last-updated": "node build/test-update-last-updated-date.js && node build/verify-last-updated.js"
   }
 }
