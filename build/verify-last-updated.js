@@ -8,7 +8,7 @@ const htmlPath = path.join(__dirname, '..', 'public', 'index.html');
 const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
 const source = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
 const html = fs.readFileSync(htmlPath, 'utf8');
-const expectedDate = '2026/6/11';
+const expectedDate = process.env.EXPECTED_LAST_UPDATED_DATE || '2026/6/11';
 
 if (data.sourceUpdatedAt !== source.fetchedAt) {
   throw new Error('Expected build/data.json to include sourceUpdatedAt from source dump');
