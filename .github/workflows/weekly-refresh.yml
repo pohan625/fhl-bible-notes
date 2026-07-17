@@ -5,7 +5,7 @@
 # runner regardless of headers). GitHub-hosted runners use a different IP
 # range that the WAF passes through.
 #
-# Behaviour: full force-refetch (~22 min), regenerate public/index.html,
+# Behaviour: full force-refetch (~22 min), regenerate the static SEO/PWA site,
 # and — only if the tracked file changed — open a PR for review. No
 # upstream change → no PR (no empty commits).
 #
@@ -83,8 +83,8 @@ jobs:
       - name: Detect tracked-file changes
         id: detect
         run: |
-          # source/ and design/ are gitignored; only public/index.html
-          # is the artifact we expect to change.
+          # source/ and design/ are gitignored; generated public/ route pages,
+          # shared assets, sitemap, and service worker change with the corpus.
           if [ -z "$(git status --short)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "✓ No upstream content changes — skipping PR."
@@ -109,6 +109,7 @@ jobs:
           node build/update-last-updated-date.js "$DISPLAY_DATE"
           node build/build.js
           EXPECTED_LAST_UPDATED_DATE="$DISPLAY_DATE" node build/verify-last-updated.js
+          npm run test:seo
 
       - name: Open PR with refreshed content
         if: steps.detect.outputs.changed == 'true'
@@ -124,13 +125,13 @@ jobs:
           # everything between the two banner lines.
           DIFF_BLOCK=$(awk '/=== Diff vs previous dump ===/{flag=1; next} /=== Refresh complete ===/{flag=0} flag' /tmp/refresh-output.log || true)
           if [ -z "$DIFF_BLOCK" ]; then
-            DIFF_BLOCK="(no per-book diff captured — likely a first-time fetch on this runner; full refetch produced new public/index.html)"
+            DIFF_BLOCK="(no per-book diff captured — likely a first-time fetch on this runner; full refetch produced new static site artifacts)"
           fi
 
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add build/template.html public/index.html
+          git add build/template.html public
           git commit -m "Weekly content refresh: ${DATE}
 
           ${DIFF_BLOCK}
@@ -155,7 +156,7 @@ jobs:
 
           - Triggered by the \`weekly-refresh.yml\` workflow on \`${DATE}\` (Asia/Taipei).
           - Displayed last updated date is \`${DISPLAY_DATE}\`.
-          - Source dump (\`source/sc_api_dump.json\`) is gitignored; the rebuilt \`public/index.html\` and display-date source in \`build/template.html\` are committed.
-          - If something looks off after merging, revert the merge commit — the previous \`public/index.html\` will come back unchanged.
+          - Source dump (\`source/sc_api_dump.json\`) is gitignored; rebuilt static routes, shared assets, sitemap, service worker, and the display-date source in \`build/template.html\` are committed.
+          - If something looks off after merging, revert the merge commit — the previous generated site will come back unchanged.
           EOF
           )"

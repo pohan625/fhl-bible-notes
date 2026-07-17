@@ -557,7 +557,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   box-shadow: 0 1px 4px rgba(0,0,0,0.07);
 }
 .chapter-nav-bar .nav-btn:active { background: var(--accent-light); }
-.chapter-nav-bar .nav-btn[disabled] { opacity: 0.28; cursor: default; box-shadow: none; }
+.chapter-nav-bar .nav-btn[disabled], .chapter-nav-bar .nav-btn[aria-disabled="true"] { opacity: 0.28; cursor: default; box-shadow: none; }
 .chapter-nav-bar .nav-center {
   flex: 1;
   display: flex;
@@ -795,6 +795,49 @@ svg { display: block; }
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Crawlable initial HTML and link semantics */
+a.book-card, a.chapter-card, a.intro-card, a.search-result,
+a.back-btn, a.nav-btn, a.tab-bar-btn, a.about-entry-btn {
+  text-decoration: none;
+}
+.static-shell { min-height: 100%; }
+.static-shell .header p { color: var(--sub); margin-top: 8px; line-height: 1.7; }
+.seo-book-section { margin-bottom: 28px; }
+.seo-book-section h2, .seo-article h2 {
+  color: var(--accent); font-family: 'Noto Serif TC', serif;
+  font-size: 18px; margin-bottom: 12px;
+}
+.seo-book-section ul {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px; list-style: none;
+}
+.seo-book-section a { color: var(--text); text-decoration: none; }
+.seo-breadcrumbs {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+  padding: 14px 20px 0; color: var(--sub); font-size: 13px;
+}
+.seo-breadcrumbs a { color: var(--accent); text-decoration: none; }
+.seo-article { padding: 22px 22px 40px; }
+.seo-article > .h1 { margin-bottom: 22px; }
+.seo-article section { margin-bottom: 24px; }
+.seo-article p { color: var(--text-soft); line-height: 1.85; margin-bottom: 10px; }
+
+/* PWA install, offline-ready, and update feedback */
+.pwa-status {
+  position: fixed; z-index: 1000; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%); width: min(90vw, 520px);
+  padding: 12px 14px; border-radius: 14px;
+  background: #2a1f12; color: white; box-shadow: 0 8px 28px rgba(0,0,0,0.24);
+  font-size: 14px; line-height: 1.5; display: flex; align-items: center; gap: 12px;
+}
+.pwa-status[hidden] { display: none; }
+.pwa-status button {
+  margin-left: auto; flex-shrink: 0; border: 0; border-radius: 999px;
+  padding: 7px 11px; background: white; color: var(--accent-strong); font-weight: 700;
+}
+.pwa-install-steps { margin: 10px 0 0 20px; color: var(--text-soft); line-height: 1.9; }
+.pwa-capability { margin-top: 10px; color: var(--accent); font-size: 13px; font-weight: 600; }
+
 /* Wider screens: keep iPhone-ish max width and add a subtle frame */
 @media (min-width: 600px) {
   body { background: #ece1cb; }
@@ -937,6 +980,93 @@ function buildPath(route) {
   if (route.screen === 'intro') return '/intro/' + encodeURIComponent(route.book) + '/' + (route.view || 'background');
   if (route.screen === 'read') return '/read/' + encodeURIComponent(route.book) + '/' + route.chapter;
   return '/';
+}
+const SITE_ORIGIN = 'https://biblestudy.tw';
+const SITE_NAME = '信望愛聖經註釋';
+const DEFAULT_DESCRIPTION = '免費查閱新舊約 66 卷、1,189 章信望愛聖經註釋，包含書卷背景、作者序、逐章釋經、原文編號與經文交叉參照。';
+function seoExcerpt(value) {
+  const text = String(value || '')
+    .replace(/#([^|\n]+)\|/g, '$1')
+    .replace(/SN[GH]\d{5}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text) return DEFAULT_DESCRIPTION;
+  return text.length <= 120 ? text : text.slice(0, 120).replace(/[，、；：\s]+$/, '') + '…';
+}
+function clientSeo(route) {
+  let title = '信望愛聖經註釋｜66卷逐章查經資料';
+  let description = DEFAULT_DESCRIPTION;
+  let robots = route.screen === 'search' ? 'noindex,follow' : 'index,follow,max-image-preview:large';
+  if (route.screen === 'about') {
+    title = '關於本站｜' + SITE_NAME;
+    description = '了解信望愛聖經註釋的資料來源、開發者、開源專案與 iPhone PWA 離線使用方式。';
+  } else if (route.screen === 'search') {
+    title = '全文搜尋｜' + SITE_NAME;
+    description = '搜尋全部 66 卷、1,189 章聖經註釋內容。';
+  } else if (route.screen === 'book') {
+    const meta = BOOK_INDEX[route.book];
+    title = route.book + '註釋｜逐章查經與背景資料｜' + SITE_NAME;
+    description = route.book + '完整聖經註釋，共 ' + (meta ? meta.chapterCount : '') + ' 章，包含書卷背景、作者序與逐章釋經資料。';
+  } else if (route.screen === 'intro') {
+    const author = route.view === 'author';
+    title = route.book + (author ? '作者序' : '背景資料') + '｜' + SITE_NAME;
+    description = seoExcerpt(author
+      ? DATA.authorPrefaces[route.book]
+      : (DATA.intros[route.book] || []).map((section) => (section.title || '') + ' ' + (section.body || '')).join('\n'));
+  } else if (route.screen === 'read') {
+    title = route.book + '第' + route.chapter + '章註釋｜' + SITE_NAME;
+    description = seoExcerpt((DATA.chapters[route.book] || {})[String(route.chapter)]);
+  }
+  const pathname = buildPath(route);
+  const canonical = new URL(pathname, SITE_ORIGIN).href;
+  const crumbs = [{ name: '首頁', path: '/' }];
+  if (route.book) crumbs.push({ name: route.book, path: '/book/' + encodeURIComponent(route.book) });
+  if (route.screen === 'intro') crumbs.push({ name: route.view === 'author' ? '作者序' : '背景資料', path: pathname });
+  if (route.screen === 'read') crumbs.push({ name: '第 ' + route.chapter + ' 章', path: pathname });
+  if (route.screen === 'about') crumbs.push({ name: '關於', path: pathname });
+  const graph = [];
+  if (route.screen === 'home') {
+    graph.push({ '@type': 'WebSite', '@id': SITE_ORIGIN + '/#website', url: SITE_ORIGIN + '/', name: SITE_NAME, description, inLanguage: 'zh-TW' });
+  } else if (route.screen !== 'search') {
+    graph.push({ '@type': 'WebPage', '@id': canonical + '#webpage', url: canonical, name: title, description, inLanguage: 'zh-TW', isPartOf: { '@id': SITE_ORIGIN + '/#website' } });
+    if (crumbs.length > 1) graph.push({ '@type': 'BreadcrumbList', itemListElement: crumbs.map((item, index) => ({ '@type': 'ListItem', position: index + 1, name: item.name, item: new URL(item.path, SITE_ORIGIN).href })) });
+  }
+  return { title, description, robots, canonical, graph };
+}
+function setMeta(selector, attribute, value) {
+  let node = document.head.querySelector(selector);
+  if (!node) {
+    node = document.createElement(selector.startsWith('link') ? 'link' : 'meta');
+    const nameMatch = selector.match(/\[name="([^"]+)"\]/);
+    const propertyMatch = selector.match(/\[property="([^"]+)"\]/);
+    const relMatch = selector.match(/\[rel="([^"]+)"\]/);
+    if (nameMatch) node.setAttribute('name', nameMatch[1]);
+    if (propertyMatch) node.setAttribute('property', propertyMatch[1]);
+    if (relMatch) node.setAttribute('rel', relMatch[1]);
+    document.head.appendChild(node);
+  }
+  node.setAttribute(attribute, value);
+}
+function applyRouteMetadata(route) {
+  const seo = clientSeo(route);
+  document.title = seo.title;
+  setMeta('meta[name="description"]', 'content', seo.description);
+  setMeta('meta[name="robots"]', 'content', seo.robots);
+  setMeta('link[rel="canonical"]', 'href', seo.canonical);
+  setMeta('meta[property="og:title"]', 'content', seo.title);
+  setMeta('meta[property="og:description"]', 'content', seo.description);
+  setMeta('meta[property="og:url"]', 'content', seo.canonical);
+  setMeta('meta[property="og:type"]', 'content', route.screen === 'home' ? 'website' : 'article');
+  setMeta('meta[name="twitter:title"]', 'content', seo.title);
+  setMeta('meta[name="twitter:description"]', 'content', seo.description);
+  let jsonLd = document.getElementById('route-jsonld');
+  if (!jsonLd) {
+    jsonLd = document.createElement('script');
+    jsonLd.id = 'route-jsonld';
+    jsonLd.type = 'application/ld+json';
+    document.head.appendChild(jsonLd);
+  }
+  jsonLd.textContent = JSON.stringify({ '@context': 'https://schema.org', '@graph': seo.graph });
 }
 function trackPageview() {
   if (window.dataLayer) {
@@ -1107,7 +1237,9 @@ const renderCommentaryLines = (text) => {
       prev = 'spacer';
       continue;
     }
-    out.push(el('div', { class: 'ln ln-' + cls.kind }, renderInline(cls.text)));
+    const headingLevels = { h1: 2, h2: 3, h3: 4, h4: 5, h5: 6 };
+    const tag = headingLevels[cls.kind] ? 'h' + headingLevels[cls.kind] : 'p';
+    out.push(el(tag, { class: 'ln ln-' + cls.kind }, renderInline(cls.text)));
     prev = cls.kind;
   }
   // Trim trailing spacer if any.
@@ -1204,6 +1336,19 @@ function el(tag, attrs, ...children) {
   return node;
 }
 
+function routeLink(route, attrs, ...children) {
+  const options = Object.assign({}, attrs || {});
+  const originalClick = options.onclick;
+  options.href = buildPath(route);
+  options.onclick = (event) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (originalClick) originalClick(event);
+    go(route);
+  };
+  return el('a', options, ...children);
+}
+
 const ICONS = {
   search: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   close: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
@@ -1236,12 +1381,11 @@ function renderTabBar(active) {
     { key: 'search', label: '搜尋', icon: 'searchTab', target: { screen: 'search' } },
   ];
   for (const t of tabs) {
-    const btn = el('button', {
+    const btn = routeLink(t.target, {
       class: 'tab-bar-btn' + (t.key === active ? ' active' : ''),
       onclick: () => {
         if (t.key !== active) {
           captureEvent('bottom_tab_selected', { tab: t.key });
-          go(t.target);
         }
       },
     });
@@ -1254,17 +1398,16 @@ function renderTabBar(active) {
 
 /* === Screens === */
 function renderHome() {
-  const screen = el('div', { class: 'screen' });
+  const screen = el('main', { class: 'screen' });
 
   // Header
   const header = el('div', { class: 'header' });
   const titleRow = el('div', { class: 'home-title-row' });
-  titleRow.appendChild(el('div', { class: 'h1' }, '信望愛聖經註釋'));
-  titleRow.appendChild(el('button', {
+  titleRow.appendChild(el('h1', { class: 'h1' }, '信望愛聖經註釋'));
+  titleRow.appendChild(routeLink({ screen: 'about' }, {
     class: 'about-entry-btn',
     onclick: () => {
       captureEvent('about_opened', { source: 'home_header' });
-      go({ screen: 'about' });
     },
   }, '關於'));
   header.appendChild(el('div', { class: 'title-block' }, titleRow));
@@ -1327,13 +1470,12 @@ function renderHome() {
       ));
       const grid = el('div', { class: 'book-grid' });
       for (const book of books) {
-        grid.appendChild(el('button', {
+        grid.appendChild(routeLink({ screen: 'book', book }, {
           class: 'book-card',
           onclick: () => {
             captureEvent('bible_book_selected', bookTrackingProperties(book, {
               source: state.homeSearch ? 'home_search' : 'book_list',
             }));
-            go({ screen: 'book', book });
           },
         }, book));
       }
@@ -1359,17 +1501,17 @@ function renderHome() {
 }
 
 function renderAbout() {
-  const screen = el('div', { class: 'screen' });
+  const screen = el('main', { class: 'screen' });
 
   const header = el('div', {
     class: 'header',
     style: { borderBottom: '1px solid var(--divider)', paddingBottom: '14px' },
   });
-  const back = el('button', { class: 'back-btn', onclick: () => go({ screen: 'home' }) });
+  const back = routeLink({ screen: 'home' }, { class: 'back-btn' });
   back.appendChild(icon('chevronLeft'));
   back.appendChild(document.createTextNode('返回'));
   header.appendChild(back);
-  header.appendChild(el('div', { class: 'h1' }, '關於'));
+  header.appendChild(el('h1', { class: 'h1' }, '關於'));
   header.appendChild(el('div', { class: 'accent-rule' }));
   screen.appendChild(header);
 
@@ -1413,6 +1555,25 @@ function renderAbout() {
   }, '♥ 前往信望愛捐款頁面'));
   scroller.appendChild(section('奉獻支持', donateCard));
 
+  // PWA / iPhone offline instructions
+  const pwaCard = el('div', { class: 'about-card' });
+  pwaCard.appendChild(el('div', { class: 'about-card-title' }, '加入 iPhone 主畫面，離線閱讀'));
+  pwaCard.appendChild(el('div', { class: 'about-card-body' },
+    '首次完成離線資料下載後，即使沒有網路，也能從主畫面開啟本網站、搜尋並閱讀全部註釋。'
+  ));
+  pwaCard.appendChild(el('ol', { class: 'pwa-install-steps' },
+    el('li', null, '使用 Safari 開啟 biblestudy.tw'),
+    el('li', null, '點選「分享」→「加入主畫面」'),
+    el('li', null, '開啟「作為 Web App 打開」，再點選「加入」')
+  ));
+  const pwaCapability = el('div', { class: 'pwa-capability' },
+    navigator.serviceWorker && navigator.serviceWorker.controller
+      ? '✓ 此裝置已啟用離線閱讀'
+      : '首次載入完成後，網站會準備離線資料'
+  );
+  pwaCard.appendChild(pwaCapability);
+  scroller.appendChild(section('離線閱讀', pwaCard));
+
   // 開發者
   const devCard = el('div', { class: 'about-card' });
   const devRow = el('div', { class: 'dev-row' });
@@ -1452,11 +1613,11 @@ function renderAbout() {
 }
 
 function renderSearch() {
-  const screen = el('div', { class: 'screen' });
+  const screen = el('main', { class: 'screen' });
 
   const header = el('div', { class: 'header' });
   header.appendChild(el('div', { class: 'title-block' },
-    el('div', { class: 'h1' }, '全文搜尋')
+    el('h1', { class: 'h1' }, '全文搜尋')
   ));
 
   const searchInput = el('input', {
@@ -1531,14 +1692,13 @@ function renderSearch() {
     if (hits.length === 0) return;
     const wrap = el('div', { class: 'search-results' });
     for (const h of hits) {
-      const card = el('button', {
+      const card = routeLink({ screen: 'read', book: h.book, chapter: h.chapter }, {
         class: 'search-result',
         onclick: () => {
           captureEvent('commentary_chapter_opened', bookTrackingProperties(h.book, {
             chapter: h.chapter,
             source: 'full_text_search_result',
           }));
-          go({ screen: 'read', book: h.book, chapter: h.chapter });
         },
       });
       card.appendChild(el('div', { class: 'search-result-loc' },
@@ -1569,15 +1729,15 @@ function renderSearch() {
 function renderBook(book) {
   const meta = BOOK_INDEX[book];
   if (!meta) return renderHome();
-  const screen = el('div', { class: 'screen' });
+  const screen = el('main', { class: 'screen' });
 
   const header = el('div', { class: 'header' });
-  const back = el('button', { class: 'back-btn', onclick: () => go({ screen: 'home' }) });
+  const back = routeLink({ screen: 'home' }, { class: 'back-btn' });
   back.appendChild(icon('chevronLeft'));
   back.appendChild(document.createTextNode('書卷'));
   header.appendChild(back);
   header.appendChild(el('div', { class: 'kicker' }, '選擇章節'));
-  header.appendChild(el('div', { class: 'h1 lg' }, book));
+  header.appendChild(el('h1', { class: 'h1 lg' }, book));
   header.appendChild(el('div', { class: 'subline' }, '共 ' + meta.chapterCount + ' 章'));
   screen.appendChild(header);
 
@@ -1590,14 +1750,13 @@ function renderBook(book) {
   if (preface || hasIntro) {
     const cards = el('div', { class: 'intro-cards' });
     if (preface) {
-      const card = el('button', {
+      const card = routeLink({ screen: 'intro', book, view: 'author' }, {
         class: 'intro-card',
         onclick: () => {
           captureEvent('book_intro_opened', bookTrackingProperties(book, {
             view: 'author',
             source: 'book_screen',
           }));
-          go({ screen: 'intro', book, view: 'author' });
         },
       });
       const ic = el('div', { class: 'intro-card-icon' });
@@ -1613,14 +1772,13 @@ function renderBook(book) {
       cards.appendChild(card);
     }
     if (hasIntro) {
-      const card = el('button', {
+      const card = routeLink({ screen: 'intro', book, view: 'background' }, {
         class: 'intro-card',
         onclick: () => {
           captureEvent('book_intro_opened', bookTrackingProperties(book, {
             view: 'background',
             source: 'book_screen',
           }));
-          go({ screen: 'intro', book, view: 'background' });
         },
       });
       const ic = el('div', { class: 'intro-card-icon solid' });
@@ -1641,14 +1799,13 @@ function renderBook(book) {
   // Chapter grid
   const grid = el('div', { class: 'chapter-grid' });
   for (let i = 1; i <= meta.chapterCount; i++) {
-    grid.appendChild(el('button', {
+    grid.appendChild(routeLink({ screen: 'read', book, chapter: i }, {
       class: 'chapter-card',
       onclick: () => {
         captureEvent('commentary_chapter_opened', bookTrackingProperties(book, {
           chapter: i,
           source: 'chapter_grid',
         }));
-        go({ screen: 'read', book, chapter: i });
       },
     }, String(i)));
   }
@@ -1661,13 +1818,13 @@ function renderBook(book) {
 function renderIntro(book, view) {
   const meta = BOOK_INDEX[book];
   if (!meta) return renderHome();
-  const screen = el('div', { class: 'screen' });
+  const screen = el('main', { class: 'screen' });
 
   const header = el('div', { class: 'header', style: { borderBottom: '1px solid var(--divider)', paddingBottom: '14px' } });
 
   // Top row: back button + (later) font-size toggle.
   const topRow = el('div', { class: 'reading-toolbar' });
-  const back = el('button', { class: 'back-btn', style: { marginBottom: '0' }, onclick: () => go({ screen: 'book', book }) });
+  const back = routeLink({ screen: 'book', book }, { class: 'back-btn', style: { marginBottom: '0' } });
   back.appendChild(icon('chevronLeft'));
   back.appendChild(document.createTextNode(book));
   topRow.appendChild(back);
@@ -1679,7 +1836,7 @@ function renderIntro(book, view) {
 
   const isAuthor = view === 'author';
   header.appendChild(el('div', { class: 'kicker', style: { marginTop: '14px' } }, isAuthor ? '查經工作背景說明' : '查經背景資料'));
-  header.appendChild(el('div', { class: 'h1 md' }, isAuthor ? '作者序' : (book + '簡介')));
+  header.appendChild(el('h1', { class: 'h1 md' }, isAuthor ? '作者序' : (book + '簡介')));
   header.appendChild(el('div', { class: 'accent-rule' }));
 
   // Body content (built first so we can wire it to the font-size toolbar).
@@ -1706,7 +1863,7 @@ function renderIntro(book, view) {
           if (!sec.title) continue;
           const div = el('div', { class: 'intro-section intro-empty-divider' });
           const head = el('div', { class: 'intro-section-head' });
-          head.appendChild(el('div', {
+          head.appendChild(el('h2', {
             class: 'intro-section-tag',
             style: { opacity: '0.7' },
           }, truncTitle(sec.title)));
@@ -1718,7 +1875,7 @@ function renderIntro(book, view) {
         const sect = el('div', { class: 'intro-section' });
         if (sec.title) {
           const head = el('div', { class: 'intro-section-head' });
-          head.appendChild(el('div', { class: 'intro-section-tag' }, truncTitle(sec.title)));
+          head.appendChild(el('h2', { class: 'intro-section-tag' }, truncTitle(sec.title)));
           head.appendChild(el('div', { class: 'intro-section-rule' }));
           sect.appendChild(head);
         }
@@ -1752,7 +1909,7 @@ function truncTitle(t) {
 function renderRead(book, chapter) {
   const meta = BOOK_INDEX[book];
   if (!meta) return renderHome();
-  const screen = el('div', { class: 'screen' });
+  const screen = el('main', { class: 'screen' });
 
   const header = el('div', { class: 'header', style: { borderBottom: '1px solid var(--divider)', paddingBottom: '14px' } });
 
@@ -1763,7 +1920,7 @@ function renderRead(book, chapter) {
   const fontTb = buildFontToolbar([bodyText]);
 
   const toolbar = el('div', { class: 'reading-toolbar' });
-  const back = el('button', { class: 'back-btn', style: { marginBottom: '0' }, onclick: () => go({ screen: 'book', book }) });
+  const back = routeLink({ screen: 'book', book }, { class: 'back-btn', style: { marginBottom: '0' } });
   back.appendChild(icon('chevronLeft'));
   back.appendChild(document.createTextNode(book));
   toolbar.appendChild(back);
@@ -1777,7 +1934,7 @@ function renderRead(book, chapter) {
   const scroller = el('div', { class: 'scroller', style: { padding: '24px 22px 96px' } });
   scroller.appendChild(el('div', { class: 'chapter-title-block' },
     el('div', { class: 'kicker' }, '第 ' + chapter + ' 章'),
-    el('div', { class: 'h1 md' }, book),
+    el('h1', { class: 'h1 md' }, book + ' 第 ' + chapter + ' 章'),
     el('div', { class: 'accent-rule' })
   ));
   if (!text) {
@@ -1798,32 +1955,32 @@ function renderRead(book, chapter) {
   const chevL = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const chevR = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-  const prevBtn = el('button', {
-    class: 'nav-btn',
-    title: '上一章',
-    disabled: chapter <= 1 || undefined,
+  const prevAttrs = {
+    class: 'nav-btn', title: '上一章',
     onclick: () => {
       captureEvent('commentary_chapter_opened', bookTrackingProperties(book, {
         chapter: chapter - 1,
         source: 'chapter_nav_previous',
       }));
-      go({ screen: 'read', book, chapter: chapter - 1 });
     },
-  });
+  };
+  const prevBtn = chapter > 1
+    ? routeLink({ screen: 'read', book, chapter: chapter - 1 }, prevAttrs)
+    : el('span', { class: 'nav-btn', title: '上一章', 'aria-disabled': 'true' });
   prevBtn.innerHTML = chevL;
 
-  const nextBtn = el('button', {
-    class: 'nav-btn',
-    title: '下一章',
-    disabled: chapter >= meta.chapterCount || undefined,
+  const nextAttrs = {
+    class: 'nav-btn', title: '下一章',
     onclick: () => {
       captureEvent('commentary_chapter_opened', bookTrackingProperties(book, {
         chapter: chapter + 1,
         source: 'chapter_nav_next',
       }));
-      go({ screen: 'read', book, chapter: chapter + 1 });
     },
-  });
+  };
+  const nextBtn = chapter < meta.chapterCount
+    ? routeLink({ screen: 'read', book, chapter: chapter + 1 }, nextAttrs)
+    : el('span', { class: 'nav-btn', title: '下一章', 'aria-disabled': 'true' });
   nextBtn.innerHTML = chevR;
 
   const center = el('div', { class: 'nav-center' });
@@ -1843,6 +2000,7 @@ function renderRead(book, chapter) {
 /* === Render dispatch === */
 function render() {
   const route = readRoute();
+  applyRouteMetadata(route);
   const root = document.getElementById('app');
   root.innerHTML = '';
   let screen;
@@ -1856,9 +2014,61 @@ function render() {
   window.scrollTo(0, 0);
 }
 
+function showPwaStatus(message, actionLabel, action, autoHide) {
+  let status = document.getElementById('pwa-status');
+  if (!status) {
+    status = el('div', { id: 'pwa-status', class: 'pwa-status', role: 'status', 'aria-live': 'polite' });
+    document.body.appendChild(status);
+  }
+  status.innerHTML = '';
+  status.hidden = false;
+  status.appendChild(el('span', null, message));
+  if (actionLabel && action) status.appendChild(el('button', { onclick: action }, actionLabel));
+  if (autoHide) setTimeout(() => { status.hidden = true; }, autoHide);
+}
+
+function registerPwa() {
+  const config = window.__PWA_CONFIG__;
+  if (!config || !('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+  let reloadForUpdate = false;
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register(config.serviceWorkerUrl, { scope: '/' });
+      const offerUpdate = (worker) => showPwaStatus('有新版註釋可用。', '重新載入', () => {
+        reloadForUpdate = true;
+        worker.postMessage({ type: 'SKIP_WAITING' });
+      });
+      if (registration.waiting && navigator.serviceWorker.controller) offerUpdate(registration.waiting);
+      registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(worker);
+          if (worker.state === 'redundant' && !navigator.serviceWorker.controller) {
+            showPwaStatus('離線資料下載失敗，線上閱讀仍可正常使用。', '重試', () => location.reload());
+            captureEvent('pwa_offline_setup_failed', { message: 'service_worker_install_redundant' });
+          }
+        });
+      });
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'OFFLINE_READY') {
+          showPwaStatus('已可離線使用全部聖經註釋。', null, null, 6000);
+        }
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloadForUpdate) location.reload();
+      });
+    } catch (error) {
+      showPwaStatus('離線資料下載失敗，線上閱讀仍可正常使用。', '重試', () => location.reload());
+      captureEvent('pwa_offline_setup_failed', { message: String(error && error.message || error) });
+    }
+  });
+}
+
 window.addEventListener('popstate', () => { render(); trackPageview(); });
 render();
 trackPageview();
+registerPwa();
 </script>
 
 

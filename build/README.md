@@ -1,7 +1,7 @@
 # 聖經註釋 App — Build Pipeline
 
-This folder turns raw commentary data from the FHL JSON API into a single
-self-contained offline web app.
+This folder turns raw commentary data from the FHL JSON API into a statically
+rendered, SEO-friendly website with a PWA offline reader.
 
 ## Pipeline
 
@@ -17,8 +17,8 @@ fetch.js  ───────────►  source/sc_api_dump.json
               build.js                       handoff.js
                   │                             │
                   ▼                             ▼
-        public/index.html              design/design-handoff.html
-       (offline app, ~10 MB)         (lightweight design build)
+        public/ static site             design/design-handoff.html
+     (1,369 routes + shared data)      (lightweight design build)
 ```
 
 ## Files
@@ -28,8 +28,10 @@ fetch.js  ───────────►  source/sc_api_dump.json
 | `fetch.js` | Hits `bible.fhl.net/api/sc.php` (book=3 信望愛站註釋) for all 66 books and writes the raw API dump. ~12 minutes, idempotent / resume-safe. |
 | `extract.js` | Parses `source/sc_api_dump.json`, splits each book into author preface / intros / chapter map, normalises soft-wraps, and writes `data.json`. |
 | `data.json` | Structured commentary data — 66 books, 1189 chapters, ~10 MB. |
-| `template.html` | The app itself: HTML + CSS + JS, with a single `__BIBLE_DATA__` placeholder. |
-| `build.js` | Injects `data.json` into `template.html` → produces `/public/index.html` (the production offline app). |
+| `template.html` | The interactive SPA source: CSS + JS, with a `__BIBLE_DATA__` placeholder for the design handoff build. |
+| `site.js` | Route manifest, SEO metadata, static semantic HTML, and sitemap helpers. |
+| `build.js` | Produces route-specific HTML, versioned shared assets, sitemap, robots, 404, and service worker under `/public`. |
+| `test-seo.js` | Exhaustively validates all routes, canonical URLs, sitemap entries, PWA assets, and Cloudflare size limits. |
 | `handoff.js` | Builds a lightweight `/design/design-handoff.html` (~170 KB) for re-importing into design tools. |
 
 ## Build commands
@@ -57,8 +59,7 @@ node build/fetch.js [--force]
 # 2. Re-extract structured data from the dump. Fast (~1 second).
 node build/extract.js
 
-# 3. Produce the full offline app at /public/index.html (~10 MB). This is what
-#    end users open on their phone.
+# 3. Produce the full static site and PWA assets under /public.
 node build/build.js
 
 # 4. Produce the lightweight design-handoff build at /design/design-handoff.html.
@@ -66,9 +67,33 @@ node build/build.js
 node build/handoff.js
 ```
 
-If you only changed `template.html` (UI/CSS) you can skip steps 1 & 2 — just
-run `npm run rebuild` (or `node build/build.js` if you also want to skip
-handoff).
+## Production SEO setup
+
+The generated canonical origin is `https://biblestudy.tw`. After deployment,
+configure Cloudflare Bulk Redirects with status `301`, subpath matching, path
+suffix preservation, and query-string preservation:
+
+- `https://www.biblestudy.tw/*` → `https://biblestudy.tw/*`
+- `https://fhl-bible-notes.pages.dev/*` → `https://biblestudy.tw/*`
+
+Cloudflare Pages cannot express hostname redirects in `public/_redirects`, so
+these two rules must be configured in the Cloudflare dashboard. In Google
+Search Console, verify the `https://biblestudy.tw/` URL-prefix property, submit
+`https://biblestudy.tw/sitemap.xml`, and inspect representative home, book,
+intro, and chapter URLs after the production deployment.
+
+## PWA offline behavior
+
+The service worker precaches the versioned app shell and the complete
+commentary corpus. Navigation is network-first and falls back to the cached
+root shell, which renders the requested path from cached data. A new cache only
+replaces the previous version after every required asset downloads; the app
+then displays an explicit reload prompt. Third-party analytics are never
+cached. Test installation and offline launch on a real iPhone before release.
+
+If you only changed `template.html` (UI/CSS) you can skip steps 1 & 2 and run
+`npm run build:site` (or `npm run rebuild` when the design handoff should also
+be regenerated). Run `npm run test:seo` after every production build.
 
 ## Refreshing content from upstream
 
@@ -76,7 +101,7 @@ handoff).
 requires fetching everything and diffing. `npm run refresh-and-diff` automates
 this: it backs up `source/sc_api_dump.json` to `sc_api_dump.prev.json`,
 force-fetches all 66 books (~22 min), prints which books / chapters / prefaces
-changed, and rebuilds `public/index.html`. To revert if a refresh introduces a
+changed, and rebuilds the full `public/` site. To revert if a refresh introduces a
 problem:
 
 ```bash
@@ -119,20 +144,21 @@ tweaks):
 3. **Bring changes back**: copy the updated HTML/CSS/JS and merge into
    `build/template.html`. **Keep the `__BIBLE_DATA__` placeholder intact** —
    it's how `build.js` knows where to inject the real commentary.
-4. **Repack production**: `node build/build.js` → updated `public/index.html`
-   with full commentary text.
+4. **Repack production**: `node build/build.js` → updated route pages and
+   versioned shared commentary data under `public/`.
 
 ## Data injection point
 
-`template.html` contains exactly one literal placeholder:
+`template.html` contains a literal data placeholder used by the design handoff:
 
 ```js
 const DATA = __BIBLE_DATA__;
 ```
 
-`build.js` and `handoff.js` both replace that string token verbatim with a
-JSON literal. **Don't quote it** in the template (`"__BIBLE_DATA__"` would
-break — JSON injection wraps the value itself in `{}`/`[]`).
+`handoff.js` replaces that token with trimmed sample data. Production
+`build.js` extracts the app JavaScript and replaces it with
+`window.__BIBLE_DATA__`, which is supplied by the versioned shared data asset.
+**Don't quote the placeholder** in the template.
 
 The injected `DATA` object has this shape:
 

@@ -1,7 +1,7 @@
 // Fetch all commentary data from bible.fhl.net/api/sc.php (book=3 信望愛站註釋).
 //
 // Pipeline position:
-//   fetch.js  →  source/sc_api_dump.json  →  extract.js  →  build/data.json  →  build.js  →  public/index.html
+//   fetch.js → source/sc_api_dump.json → extract.js → build/data.json → build.js → public static site
 //
 // Why we do this:
 //   The previous data source was a snapshot of a2z.fhl.net/php/pcom.php which

@@ -60,7 +60,9 @@ if (!template.includes('__BIBLE_DATA__')) {
 
 // Pretty-print for readability when the file is opened in a design tool.
 const json = JSON.stringify(trimmed, null, 2);
-const out = template.replace('__BIBLE_DATA__', () => json);
+const out = template
+  .replace('__POSTHOG_SNIPPET__', '')
+  .replace('__BIBLE_DATA__', () => json);
 
 // Tag the output with a comment so it's obvious which build this is.
 const banner = `<!--
@@ -74,8 +76,8 @@ ${Object.entries(SAMPLE).map(([b, o]) => `    - ${b} (chapters ${o.chapters.join
   search, etc. all render realistically). Tapping into an unsampled book
   shows the empty state — which is itself a designable state.
 
-  To re-pack with the full commentary text: run \`node build/build.js\` to
-  produce the full /index.html.
+  To build the production static SEO/PWA site with the full commentary text,
+  run \`node build/build.js\`.
 -->
 `;
 
