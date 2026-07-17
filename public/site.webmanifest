@@ -1,6 +1,10 @@
 {
   "name": "信望愛聖經註釋",
   "short_name": "聖經註釋",
+  "description": "新舊約 66 卷、1,189 章信望愛聖經註釋與查經資料",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/icons/app-icon-192.png?v=5-split",
@@ -15,5 +19,6 @@
   ],
   "theme_color": "#7B2D3E",
   "background_color": "#FFF7E8",
-  "display": "standalone"
+  "display": "standalone",
+  "orientation": "any"
 }

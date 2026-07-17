@@ -12,7 +12,7 @@
 //   2. Run `fetch.js --force` to re-fetch all 66 books (~22 minutes).
 //   3. Diff old vs new — print which books / chapters changed, which preBook
 //      sections changed.
-//   4. Run extract.js → build.js → handoff.js so public/index.html and
+//   4. Run extract.js → build.js → handoff.js so all static SEO/PWA routes and
 //      design/design-handoff.html are up to date.
 //
 // Recovery: if fetch.js fails partway through, the existing dump file may be
@@ -142,14 +142,14 @@ async function main() {
   const hasChanges = printDiff(changes);
 
   // 4. Always rebuild — even if "no content changed", a code-side update to
-  //    extract.js or template.html might still want a fresh public/index.html.
+  //    extract.js or template.html might still want fresh generated routes.
   run('extract.js');
   run('build.js');
   run('handoff.js');
 
   console.log('\n=== Refresh complete ===');
   if (hasChanges) {
-    console.log('Content changed — review `git diff public/index.html` and commit when satisfied.');
+    console.log('Content changed — review `git diff --stat public` and commit when satisfied.');
     console.log('To revert: cp source/sc_api_dump.prev.json source/sc_api_dump.json && npm run rebuild');
   } else {
     console.log('No upstream content changes; build artifacts regenerated anyway.');

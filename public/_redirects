@@ -1,1 +1,2 @@
-/*  /index.html  200
+# Valid app routes are generated as static HTML files. A top-level 404.html
+# handles unknown paths so crawlers receive a real 404 instead of the SPA shell.

@@ -1,7 +1,7 @@
 // Extract per-book / per-chapter commentary from the fetched JSON API dump.
 //
 // Pipeline position:
-//   fetch.js  →  source/sc_api_dump.json  →  *extract.js*  →  build/data.json  →  build.js  →  public/index.html
+//   fetch.js → source/sc_api_dump.json → *extract.js* → build/data.json → build.js → public static site
 //
 // Input: source/sc_api_dump.json (produced by build/fetch.js from bible.fhl.net/api/sc.php)
 //   {
