@@ -1,18 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 
-const dataPath = path.join(__dirname, 'data.json');
-const sourcePath = path.join(__dirname, '..', 'source', 'sc_api_dump.json');
 const publicPath = path.join(__dirname, '..', 'public');
 const templatePath = path.join(__dirname, 'template.html');
 
-const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-const source = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
-const dataAssetName = fs.readdirSync(path.join(publicPath, 'assets')).find((name) => /^bible-data\.[a-f0-9]+\.js$/.test(name));
-const appAssetName = fs.readdirSync(path.join(publicPath, 'assets')).find((name) => /^app\.[a-f0-9]+\.js$/.test(name));
-if (!dataAssetName || !appAssetName) {
-  throw new Error('Expected versioned Bible data and app JavaScript assets');
-}
+const indexHtml = fs.readFileSync(path.join(publicPath, 'index.html'), 'utf8');
+const dataAssetMatch = indexHtml.match(/<script defer src="\/assets\/(bible-data\.[a-f0-9]+\.js)"><\/script>/);
+const appAssetMatch = indexHtml.match(/<script defer src="\/assets\/(app\.[a-f0-9]+\.js)"><\/script>/);
+if (!dataAssetMatch || !appAssetMatch) throw new Error('Expected index.html to reference versioned Bible data and app JavaScript assets');
+const dataAssetName = dataAssetMatch[1];
+const appAssetName = appAssetMatch[1];
 const dataAsset = fs.readFileSync(path.join(publicPath, 'assets', dataAssetName), 'utf8');
 const appAsset = fs.readFileSync(path.join(publicPath, 'assets', appAssetName), 'utf8');
 const template = fs.readFileSync(templatePath, 'utf8');
@@ -20,13 +17,19 @@ const templateDate = template.match(/const LAST_UPDATED_DATE = '([^']+)'/);
 const expectedDate = process.env.EXPECTED_LAST_UPDATED_DATE || (templateDate && templateDate[1]);
 if (!expectedDate) throw new Error('Could not determine expected last updated date');
 
-if (data.sourceUpdatedAt !== source.fetchedAt) {
-  throw new Error('Expected build/data.json to include sourceUpdatedAt from source dump');
-}
-
-if (!dataAsset.includes('"sourceUpdatedAt":"' + source.fetchedAt + '"')) {
-  throw new Error('Expected versioned Bible data asset to include sourceUpdatedAt');
-}
+const dataPrefix = 'window.__BIBLE_DATA__=';
+if (!dataAsset.startsWith(dataPrefix)) throw new Error('Expected versioned Bible data asset to expose window.__BIBLE_DATA__');
+const publicData = JSON.parse(dataAsset.slice(dataPrefix.length).trim().replace(/;$/, ''));
+const sourceUpdatedAt = new Date(publicData.sourceUpdatedAt);
+if (Number.isNaN(sourceUpdatedAt.getTime())) throw new Error('Expected versioned Bible data asset to include a valid sourceUpdatedAt');
+const dateParts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Taipei',
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+}).formatToParts(sourceUpdatedAt).map(({ type, value }) => [type, value]));
+const publicDataDate = `${dateParts.year}/${dateParts.month}/${dateParts.day}`;
+if (publicDataDate !== expectedDate) throw new Error(`Expected public Bible data date ${publicDataDate} to match displayed date ${expectedDate}`);
 
 if (!appAsset.includes("const LAST_UPDATED_DATE = '" + expectedDate + "'")) {
   throw new Error('Expected versioned app asset to use the requested display date');
