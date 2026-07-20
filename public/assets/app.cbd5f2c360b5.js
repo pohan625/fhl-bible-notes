@@ -39,7 +39,7 @@ const NT_CATEGORIES = [
 const BOOK_INDEX = {};
 for (const b of DATA.books) BOOK_INDEX[b.name] = b;
 
-const LAST_UPDATED_DATE = '2026/7/12';
+const LAST_UPDATED_DATE = '2026/7/19';
 
 /* === Full-text search ===
  * Plain `String.indexOf` scan over every chapter's commentary text. The whole
