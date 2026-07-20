@@ -98,6 +98,10 @@ new vm.Script(appJs, { filename: path.basename(appAsset) });
 assert.ok(appJs.includes('function routeLink('), 'SPA must expose crawlable route links');
 assert.ok(appJs.includes('function applyRouteMetadata('), 'SPA must update route metadata');
 assert.ok(appJs.includes('function registerPwa('), 'SPA must register the PWA');
+const cssAsset = files.find((file) => /\/assets\/app\.[a-f0-9]+\.css$/.test(file));
+assert.ok(cssAsset, 'Versioned app CSS is missing');
+const appCss = fs.readFileSync(cssAsset, 'utf8');
+assert.ok(/\.ln-h5\s*\{[^}]*font-size:\s*1em\s*;/.test(appCss), 'Level-five headings must override the browser h6 font size');
 const manifest = JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'site.webmanifest'), 'utf8'));
 assert.deepStrictEqual({ id: manifest.id, start_url: manifest.start_url, scope: manifest.scope, display: manifest.display }, {
   id: '/', start_url: '/', scope: '/', display: 'standalone',
