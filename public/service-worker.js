@@ -1,11 +1,11 @@
 'use strict';
-const CACHE_NAME = "fhl-bible-63230e4e27c6";
+const CACHE_NAME = "fhl-bible-cc0704afb6e8";
 const PRECACHE_URLS = [
   "/",
   "/site.webmanifest",
   "/assets/app.3cb8fc055a8d.css",
-  "/assets/app.bac2a9203d3b.js",
-  "/assets/bible-data.f8cb45564a35.js",
+  "/assets/app.9d45792f04e5.js",
+  "/assets/bible-data.558d5ab9c189.js",
   "/icons/app-icon-180.png?v=5-split",
   "/icons/app-icon-192.png?v=5-split",
   "/icons/app-icon-512.png?v=5-split",
@@ -23,7 +23,7 @@ self.addEventListener('activate', (event) => {
     await Promise.all(names.filter((name) => name.startsWith('fhl-bible-') && name !== CACHE_NAME).map((name) => caches.delete(name)));
     await self.clients.claim();
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of clients) client.postMessage({ type: 'OFFLINE_READY', version: "63230e4e27c6" });
+    for (const client of clients) client.postMessage({ type: 'OFFLINE_READY', version: "cc0704afb6e8" });
   })());
 });
 
